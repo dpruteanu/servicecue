@@ -132,6 +132,7 @@ export function App() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [libraryIndex, setLibraryIndex] = useState<LibraryIndex>({ tracks: [] });
   const [isScanning, setIsScanning] = useState(false);
+  const [mode, setMode] = useState<"setup" | "live">("setup");
   const [schedule, setSchedule] = useState<ServiceSchedule>(() => createDefaultSchedule());
   const [scheduleFilePath, setScheduleFilePath] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => "");
@@ -154,6 +155,7 @@ export function App() {
   const [volume, setVolume] = useState(100);
   const [fadeSeconds, setFadeSeconds] = useState(5);
   const [message, setMessage] = useState("Choose an output device, then choose a local MP3, WAV, or M4A file.");
+  const isLiveMode = mode === "live";
   const progressPercent = useMemo(() => {
     if (!track?.durationSeconds) {
       return 0;
@@ -798,14 +800,43 @@ export function App() {
             <h1 className="text-2xl font-semibold">ServiceCue</h1>
             <p className="text-sm text-cue-muted">Local backing-track player for church services</p>
           </div>
-          <div className="rounded border border-cue-line px-3 py-1.5 text-sm font-medium text-cue-muted">
-            Build steps 1-9
+          <div className="flex items-center gap-3">
+            <div className="rounded border border-cue-line px-3 py-1.5 text-sm font-medium text-cue-muted">
+              Build steps 1-10
+            </div>
+            <div className="flex rounded-md border border-cue-line p-1">
+              <button
+                className={[
+                  "rounded px-3 py-1.5 text-sm font-semibold",
+                  mode === "setup" ? "bg-cue-action text-white" : "text-cue-muted hover:bg-cue-panel",
+                ].join(" ")}
+                type="button"
+                onClick={() => setMode("setup")}
+              >
+                Setup
+              </button>
+              <button
+                className={[
+                  "rounded px-3 py-1.5 text-sm font-semibold",
+                  mode === "live" ? "bg-cue-action text-white" : "text-cue-muted hover:bg-cue-panel",
+                ].join(" ")}
+                type="button"
+                onClick={() => setMode("live")}
+              >
+                Live
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-6 py-6 xl:grid-cols-[360px_minmax(360px,1fr)_360px]">
-        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
+      <section
+        className={[
+          "mx-auto grid max-w-7xl gap-6 px-6 py-6",
+          isLiveMode ? "xl:grid-cols-[minmax(420px,1fr)_480px]" : "xl:grid-cols-[360px_minmax(360px,1fr)_360px]",
+        ].join(" ")}
+      >
+        <div className={["rounded-lg border border-cue-line bg-white p-5 shadow-sm", isLiveMode ? "hidden" : ""].join(" ")}>
           <h2 className="text-lg font-semibold">Library</h2>
           <p className="mt-1 text-sm text-cue-muted">
             Choose the Negativ Library folder. ServiceCue indexes on open and manual rescan only.
@@ -972,58 +1003,68 @@ export function App() {
         <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold">Service Order</h2>
           <p className="mt-1 text-sm text-cue-muted">
-            JSON schedule model with the default service sections.
+            {isLiveMode ? "Playback-only view for the current service." : "JSON schedule model with the default service sections."}
           </p>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_150px]">
-            <label className="block text-sm font-medium">
-              Service name
-              <input
-                className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
-                value={schedule.name}
-                onChange={(event) => updateScheduleName(event.target.value)}
-              />
-            </label>
+          {isLiveMode ? (
+            <div className="mt-5 rounded-md border border-cue-line bg-cue-panel p-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-cue-muted">Current service</div>
+              <div className="mt-1 text-sm font-semibold">{schedule.name}</div>
+              <div className="text-xs text-cue-muted">{schedule.date}</div>
+            </div>
+          ) : (
+            <>
+              <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_150px]">
+                <label className="block text-sm font-medium">
+                  Service name
+                  <input
+                    className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                    value={schedule.name}
+                    onChange={(event) => updateScheduleName(event.target.value)}
+                  />
+                </label>
 
-            <label className="block text-sm font-medium">
-              Date
-              <input
-                className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
-                type="date"
-                value={schedule.date}
-                onChange={(event) => updateScheduleDate(event.target.value)}
-              />
-            </label>
-          </div>
+                <label className="block text-sm font-medium">
+                  Date
+                  <input
+                    className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                    type="date"
+                    value={schedule.date}
+                    onChange={(event) => updateScheduleDate(event.target.value)}
+                  />
+                </label>
+              </div>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
-              type="button"
-              onClick={handleNewSchedule}
-            >
-              New
-            </button>
-            <button
-              className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
-              type="button"
-              onClick={() => void handleSaveSchedule()}
-            >
-              Save
-            </button>
-            <button
-              className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
-              type="button"
-              onClick={() => void handleLoadSchedule()}
-            >
-              Load
-            </button>
-          </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
+                  type="button"
+                  onClick={handleNewSchedule}
+                >
+                  New
+                </button>
+                <button
+                  className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
+                  type="button"
+                  onClick={() => void handleSaveSchedule()}
+                >
+                  Save
+                </button>
+                <button
+                  className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
+                  type="button"
+                  onClick={() => void handleLoadSchedule()}
+                >
+                  Load
+                </button>
+              </div>
 
-          <div className="mt-4 rounded-md border border-cue-line bg-cue-panel p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-cue-muted">Schedule file</div>
-            <div className="mt-1 break-all text-sm">{scheduleFilePath ?? "Not saved yet"}</div>
-          </div>
+              <div className="mt-4 rounded-md border border-cue-line bg-cue-panel p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-cue-muted">Schedule file</div>
+                <div className="mt-1 break-all text-sm">{scheduleFilePath ?? "Not saved yet"}</div>
+              </div>
+            </>
+          )}
 
           <div className="mt-5 space-y-3">
             {orderedSections
@@ -1036,9 +1077,9 @@ export function App() {
                       ? "border-cue-action bg-blue-50"
                       : "border-cue-line",
                   ].join(" ")}
-                  onDragLeave={() => setDragOverSectionId((current) => current === section.id ? null : current)}
-                  onDragOver={(event) => handleSectionDragOver(event, section.id)}
-                  onDrop={(event) => handleSectionDrop(event, section.id)}
+                  onDragLeave={isLiveMode ? undefined : () => setDragOverSectionId((current) => current === section.id ? null : current)}
+                  onDragOver={isLiveMode ? undefined : (event) => handleSectionDragOver(event, section.id)}
+                  onDrop={isLiveMode ? undefined : (event) => handleSectionDrop(event, section.id)}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -1062,17 +1103,17 @@ export function App() {
                           <div
                             key={item.id}
                             className={[
-                              "cursor-grab rounded border bg-cue-panel px-3 py-2 active:cursor-grabbing",
+                              `${isLiveMode ? "" : "cursor-grab active:cursor-grabbing"} rounded border bg-cue-panel px-3 py-2`,
                               dragOverItemId === item.id ? "border-cue-action ring-2 ring-blue-100" : "border-cue-line",
                             ].join(" ")}
-                            draggable
+                            draggable={!isLiveMode}
                             onDragEnd={() => {
                               setDragOverItemId(null);
                               setDragOverSectionId(null);
                             }}
-                            onDragOver={(event) => handleScheduleItemDragOver(event, section.id, item.id)}
-                            onDragStart={(event) => handleScheduleItemDragStart(event, section.id, item.id)}
-                            onDrop={(event) => handleScheduleItemDrop(event, section.id, item.id)}
+                            onDragOver={isLiveMode ? undefined : (event) => handleScheduleItemDragOver(event, section.id, item.id)}
+                            onDragStart={isLiveMode ? undefined : (event) => handleScheduleItemDragStart(event, section.id, item.id)}
+                            onDrop={isLiveMode ? undefined : (event) => handleScheduleItemDrop(event, section.id, item.id)}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
@@ -1092,13 +1133,15 @@ export function App() {
                                 >
                                   Load
                                 </button>
-                                <button
-                                  className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70"
-                                  type="button"
-                                  onClick={() => removeScheduleItem(section.id, item.id)}
-                                >
-                                  Remove
-                                </button>
+                                {!isLiveMode && (
+                                  <button
+                                    className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70"
+                                    type="button"
+                                    onClick={() => removeScheduleItem(section.id, item.id)}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1115,7 +1158,7 @@ export function App() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
+        <div className={["rounded-lg border border-cue-line bg-white p-5 shadow-sm", isLiveMode ? "hidden" : ""].join(" ")}>
           <h2 className="text-lg font-semibold">Import Guest File</h2>
           <p className="mt-1 text-sm text-cue-muted">
             Drop a guest track, pick the section, and copy it into this service.
@@ -1189,7 +1232,7 @@ export function App() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm xl:col-span-3">
+        <div className={["rounded-lg border border-cue-line bg-white p-5 shadow-sm", isLiveMode ? "" : "xl:col-span-3"].join(" ")}>
           <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
             <div>
               <h2 className="text-lg font-semibold">Output</h2>
