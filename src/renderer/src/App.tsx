@@ -181,6 +181,24 @@ function iconButtonClass(active = false) {
   ].join(" ");
 }
 
+function dangerButtonClass(active = false) {
+  return [
+    "inline-flex items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45",
+    active
+      ? "border-red-600 bg-red-600 text-white shadow-sm hover:bg-red-700"
+      : "border-cue-line bg-white text-red-700 hover:border-red-200 hover:bg-red-50",
+  ].join(" ");
+}
+
+function warningButtonClass(active = false) {
+  return [
+    "inline-flex items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45",
+    active
+      ? "border-amber-500 bg-amber-500 text-white shadow-sm hover:bg-amber-600"
+      : "border-cue-line bg-white text-amber-700 hover:border-amber-200 hover:bg-amber-50",
+  ].join(" ");
+}
+
 function buttonClass(kind: "primary" | "secondary" | "ghost" = "secondary") {
   if (kind === "primary") {
     return "inline-flex items-center justify-center gap-2 rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45";
@@ -1058,21 +1076,21 @@ export function App() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-cue-panel text-cue-ink">
+    <main className="flex h-screen min-h-[680px] flex-col overflow-hidden bg-cue-panel text-cue-ink">
       <header className="border-b border-cue-line bg-white">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-5 py-3">
+        <div className="mx-auto flex w-full max-w-[1680px] flex-wrap items-center gap-3 px-3 py-2 sm:px-4 xl:flex-nowrap xl:px-5 xl:py-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <img className="size-10 shrink-0 rounded-lg shadow-sm" src={serviceCueIcon} alt="" />
+            <img className="size-9 shrink-0 rounded-lg shadow-sm lg:size-10" src={serviceCueIcon} alt="" />
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-semibold leading-tight">ServiceCue</h1>
-              <p className="truncate text-sm text-cue-muted">Local backing-track player for church services</p>
+              <h1 className="truncate text-lg font-semibold leading-tight lg:text-xl">ServiceCue</h1>
+              <p className="hidden truncate text-sm text-cue-muted sm:block">Local backing-track player for church services</p>
             </div>
           </div>
 
-          <div className="flex rounded-md border border-cue-line bg-white p-1">
+          <div className="flex shrink-0 rounded-md border border-cue-line bg-white p-1">
             <button
               className={[
-                "rounded px-5 py-2 text-sm font-semibold",
+                "rounded px-4 py-2 text-sm font-semibold lg:px-5",
                 mode === "setup" ? "bg-cue-action text-white shadow-sm" : "text-cue-muted hover:bg-cue-panel",
               ].join(" ")}
               type="button"
@@ -1082,7 +1100,7 @@ export function App() {
             </button>
             <button
               className={[
-                "rounded px-5 py-2 text-sm font-semibold",
+                "rounded px-4 py-2 text-sm font-semibold lg:px-5",
                 mode === "live" ? "bg-cue-action text-white shadow-sm" : "text-cue-muted hover:bg-cue-panel",
               ].join(" ")}
               type="button"
@@ -1093,7 +1111,7 @@ export function App() {
           </div>
 
           <select
-            className="hidden min-w-64 rounded-md border border-cue-line bg-white px-3 py-2 text-sm font-medium lg:block"
+            className="min-w-0 flex-1 rounded-md border border-cue-line bg-white px-3 py-2 text-sm font-medium sm:min-w-64 lg:max-w-80"
             value={scheduleFilePath ?? ""}
             onChange={(event) => void handleLoadScheduleByPath(event.target.value)}
             title="Current service"
@@ -1106,7 +1124,7 @@ export function App() {
             ))}
           </select>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {!isLiveMode && (
               <>
                 <button className={buttonClass("secondary")} type="button" onClick={() => void handleSaveSchedule()}>
@@ -1135,12 +1153,12 @@ export function App() {
 
       <section
         className={[
-          "mx-auto grid w-full max-w-[1600px] flex-1 gap-3 px-3 py-3 lg:px-5 lg:py-4",
-          isLiveMode ? "grid-cols-1" : "xl:grid-cols-[minmax(330px,0.9fr)_minmax(520px,1.55fr)_minmax(300px,0.8fr)]",
+          "mx-auto grid min-h-0 w-full max-w-[1680px] flex-1 gap-3 overflow-auto px-3 py-3 lg:px-4 lg:py-4 xl:overflow-hidden",
+          isLiveMode ? "grid-cols-1" : "lg:grid-cols-[minmax(280px,0.85fr)_minmax(420px,1.35fr)] 2xl:grid-cols-[minmax(320px,0.9fr)_minmax(500px,1.55fr)_minmax(290px,0.8fr)]",
         ].join(" ")}
       >
         {!isLiveMode && (
-          <aside className="flex min-h-[540px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm">
+          <aside className="flex min-h-[360px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm lg:min-h-0 2xl:h-full">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Library</h2>
               <span className="text-xs font-semibold text-cue-muted">{libraryIndex.tracks.length} tracks</span>
@@ -1236,16 +1254,16 @@ export function App() {
           </aside>
         )}
 
-        <section className="flex min-h-[540px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm">
+        <section className="flex min-h-[420px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm lg:min-h-0 2xl:h-full">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">{isLiveMode ? "Service Order" : "Today's Schedule"}</h2>
               <p className="text-sm text-cue-muted">{schedule.name}</p>
             </div>
             {!isLiveMode && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <input
-                  className="w-56 rounded-md border border-cue-line px-3 py-2 text-sm"
+                  className="w-48 rounded-md border border-cue-line px-3 py-2 text-sm xl:w-56"
                   value={schedule.name}
                   onChange={(event) => updateScheduleName(event.target.value)}
                   aria-label="Service name"
@@ -1318,7 +1336,7 @@ export function App() {
                               Rename section
                             </button>
                             <button
-                              className={buttonClass("ghost") + " w-full justify-start text-cue-warm"}
+                              className={dangerButtonClass() + " w-full justify-start border-transparent px-3 py-2 shadow-none"}
                               type="button"
                               disabled={orderedSections.length <= 1}
                               onClick={() => removeSection(section.id)}
@@ -1390,7 +1408,7 @@ export function App() {
                             )}
                             {!isLiveMode && !isMissing && (
                               <button
-                                className={iconButtonClass()}
+                                className="inline-flex size-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
                                 type="button"
                                 title="Remove track"
                                 onClick={() => removeScheduleItem(section.id, item.id)}
@@ -1421,11 +1439,11 @@ export function App() {
         </section>
 
         {!isLiveMode && (
-          <aside className="flex min-h-[540px] flex-col rounded-md border border-cue-line bg-white p-5 shadow-sm">
+          <aside className="flex min-h-[360px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm lg:col-span-2 lg:min-h-0 2xl:col-span-1 2xl:h-full 2xl:p-5">
             <h2 className="text-lg font-semibold">Import Guest File</h2>
 
             <div
-              className="mt-8 flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-cue-line bg-cue-panel px-6 py-8 text-center"
+              className="mt-5 flex min-h-44 flex-col items-center justify-center rounded-md border border-dashed border-cue-line bg-cue-panel px-6 py-8 text-center 2xl:mt-8 2xl:min-h-56"
               onDragOver={(event) => event.preventDefault()}
               onDrop={handleGuestDrop}
             >
@@ -1492,15 +1510,15 @@ export function App() {
         )}
       </section>
 
-      <footer className="border-t border-cue-line bg-white px-4 py-3">
-        <div className="mx-auto grid max-w-[1600px] items-center gap-4 xl:grid-cols-[minmax(300px,1fr)_minmax(420px,1.2fr)_minmax(360px,1fr)]">
+      <footer className="shrink-0 border-t border-cue-line bg-white px-3 py-2 lg:px-4 lg:py-3">
+        <div className="mx-auto grid max-w-[1680px] items-center gap-3 lg:grid-cols-[minmax(260px,1fr)_auto] xl:grid-cols-[minmax(280px,1fr)_minmax(360px,auto)_minmax(320px,0.9fr)] xl:gap-4">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-md border border-cue-line bg-cue-panel text-cue-muted">
-              <Music className="size-8" aria-hidden="true" />
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-md border border-cue-line bg-cue-panel text-cue-muted lg:size-14 xl:size-16">
+              <Music className="size-6 lg:size-7 xl:size-8" aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-cue-action">Now Playing</div>
-              <div className="truncate text-lg font-semibold">{nowPlayingTitle}</div>
+              <div className="truncate text-base font-semibold lg:text-lg">{nowPlayingTitle}</div>
               <div className="truncate text-sm text-cue-ink">{nowPlayingGroup}</div>
               <div className="mt-2 flex items-center gap-3">
                 <span className="w-10 text-sm tabular-nums">{formatTime(currentTime)}</span>
@@ -1512,35 +1530,35 @@ export function App() {
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-3">
-            <button className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-sm font-semibold hover:bg-cue-panel disabled:opacity-45" type="button" disabled={!track} onClick={() => void handleRestart()}>
+          <div className="flex items-center justify-center gap-2 xl:gap-3">
+            <button className="flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-xs font-semibold hover:bg-cue-panel disabled:opacity-45 xl:h-16 xl:w-20 xl:text-sm" type="button" disabled={!track} onClick={() => void handleRestart()}>
               <RotateCcw className="size-5" aria-hidden="true" />
               Restart
             </button>
-            <button className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-sm font-semibold hover:bg-cue-panel disabled:opacity-45" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(-1)}>
+            <button className="flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-xs font-semibold hover:bg-cue-panel disabled:opacity-45 xl:h-16 xl:w-20 xl:text-sm" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(-1)}>
               <SkipBack className="size-5" aria-hidden="true" />
               Previous
             </button>
             <button
-              className="flex size-20 items-center justify-center rounded-full bg-cue-action text-white shadow-lg transition hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
+              className="flex size-16 items-center justify-center rounded-full bg-cue-action text-white shadow-lg transition hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45 xl:size-20"
               type="button"
               disabled={!track}
               onClick={() => void handlePlayPause()}
               title={isPlaying ? "Pause" : "Play"}
             >
-              {isPlaying ? <Pause className="size-9 fill-current" aria-hidden="true" /> : <Play className="ml-1 size-9 fill-current" aria-hidden="true" />}
+              {isPlaying ? <Pause className="size-8 fill-current xl:size-9" aria-hidden="true" /> : <Play className="ml-1 size-8 fill-current xl:size-9" aria-hidden="true" />}
             </button>
-            <button className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-sm font-semibold hover:bg-cue-panel disabled:opacity-45" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(1)}>
+            <button className="flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-xs font-semibold hover:bg-cue-panel disabled:opacity-45 xl:h-16 xl:w-20 xl:text-sm" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(1)}>
               <SkipForward className="size-5" aria-hidden="true" />
               Next
             </button>
-            <button className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-sm font-semibold hover:bg-cue-panel disabled:opacity-45" type="button" disabled={!track} onClick={() => void handleStop()}>
+            <button className={["flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-md border text-xs font-semibold transition disabled:opacity-45 xl:h-16 xl:w-20 xl:text-sm", track ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" : "border-cue-line bg-white text-cue-muted"].join(" ")} type="button" disabled={!track} onClick={() => void handleStop()}>
               <Square className="size-5 fill-current" aria-hidden="true" />
               Stop
             </button>
           </div>
 
-          <div className="grid gap-4 border-cue-line xl:grid-cols-[150px_1fr] xl:border-l xl:pl-6">
+          <div className="grid gap-3 border-cue-line lg:col-span-2 lg:grid-cols-[150px_1fr] xl:col-span-1 xl:border-l xl:pl-5">
             <div>
               <label className="block text-sm font-medium">
                 Fade Out
@@ -1554,7 +1572,7 @@ export function App() {
                   ))}
                 </select>
               </label>
-              <button className={buttonClass("secondary") + " mt-2 w-full"} type="button" disabled={!track || status !== "playing"} onClick={() => void handleFadeOut()}>
+              <button className={warningButtonClass(status === "playing") + " mt-2 w-full"} type="button" disabled={!track || status !== "playing"} onClick={() => void handleFadeOut()}>
                 Fade Out
               </button>
             </div>
