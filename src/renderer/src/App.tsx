@@ -1018,13 +1018,6 @@ export function App() {
             >
               Load
             </button>
-            <button
-              className="rounded-md bg-cue-ok px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
-              type="button"
-              onClick={openGuestModal}
-            >
-              Add Guest Song
-            </button>
           </div>
 
           <div className="mt-4 rounded-md border border-cue-line bg-cue-panel p-3">
@@ -1123,64 +1116,140 @@ export function App() {
         </div>
 
         <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold">Output</h2>
+          <h2 className="text-lg font-semibold">Import Guest File</h2>
           <p className="mt-1 text-sm text-cue-muted">
-            Pick the device that feeds the mixer. The choice is saved in Electron userData.
+            Drop a guest track, pick the section, and copy it into this service.
           </p>
 
-          <label className="mt-5 block text-sm font-medium" htmlFor="output-device">
-            Audio output device
-          </label>
-          <select
-            id="output-device"
-            className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
-            value={selectedDeviceId}
-            onChange={(event) => void handleDeviceChange(event.target.value)}
+          <div
+            className="mt-5 rounded-md border border-dashed border-cue-line bg-cue-panel px-4 py-6 text-center"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handleGuestDrop}
           >
-            {devices.map((device) => (
-              <option key={device.deviceId} value={device.deviceId}>
-                {device.label}
-              </option>
-            ))}
-          </select>
-
-          {missingSelectedDevice && (
-            <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-cue-warm">
-              The saved output device is missing. ServiceCue has fallen back to the system default.
+            <div className="text-sm font-semibold">Drop MP3, WAV, or M4A here</div>
+            <div className="mt-1 break-all text-xs text-cue-muted">
+              {guestSourceFilePath || "or browse for a guest file"}
             </div>
-          )}
+            <button
+              className="mt-4 rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
+              type="button"
+              onClick={() => void handlePickGuestFile()}
+            >
+              Browse
+            </button>
+          </div>
 
-          <div className="mt-4 flex gap-3">
-            <button
-              className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
-              type="button"
-              onClick={() => void handleTestOutput()}
-            >
-              Test Output
-            </button>
-            <button
-              className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
-              type="button"
-              onClick={() => void refreshDevices()}
-            >
-              Refresh
-            </button>
+          <div className="mt-5 grid gap-4">
+            <label className="block text-sm font-medium">
+              Section
+              <select
+                className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
+                value={activeGuestSectionId}
+                onChange={(event) => setGuestSectionId(event.target.value)}
+              >
+                {orderedSections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium">
+              Guest or group name
+              <input
+                className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                placeholder="Optional"
+                value={guestName}
+                onChange={(event) => setGuestName(event.target.value)}
+              />
+            </label>
+
+            <label className="block text-sm font-medium">
+              Song title
+              <input
+                className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                value={guestSongTitle}
+                onChange={(event) => setGuestSongTitle(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <button
+            className="mt-5 w-full rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
+            type="button"
+            disabled={isImportingGuest || !guestSourceFilePath}
+            onClick={() => void handleImportGuestSong()}
+          >
+            Add to Service
+          </button>
+
+          <div className="mt-3 text-xs text-cue-muted">
+            Guest files are copied into the current service Incoming folder before playback.
           </div>
         </div>
 
-        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm xl:col-span-2 xl:col-start-2">
-          <h2 className="text-lg font-semibold">Local Track</h2>
-          <p className="mt-1 text-sm text-cue-muted">
-            This proves playback before the library index and schedule builder exist.
-          </p>
+        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm xl:col-span-3">
+          <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+            <div>
+              <h2 className="text-lg font-semibold">Output</h2>
+              <p className="mt-1 text-sm text-cue-muted">
+                Pick the device that feeds the mixer.
+              </p>
 
-          <button
-            className="mt-5 rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
-            type="button"
-            onClick={() => void handlePickTrack()}
-          >
-            Choose Audio File
-          </button>
+              <label className="mt-5 block text-sm font-medium" htmlFor="output-device">
+                Audio output device
+              </label>
+              <select
+                id="output-device"
+                className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
+                value={selectedDeviceId}
+                onChange={(event) => void handleDeviceChange(event.target.value)}
+              >
+                {devices.map((device) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label}
+                  </option>
+                ))}
+              </select>
+
+              {missingSelectedDevice && (
+                <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-cue-warm">
+                  The saved output device is missing. ServiceCue has fallen back to the system default.
+                </div>
+              )}
+
+              <div className="mt-4 flex gap-3">
+                <button
+                  className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
+                  type="button"
+                  onClick={() => void handleTestOutput()}
+                >
+                  Test Output
+                </button>
+                <button
+                  className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
+                  type="button"
+                  onClick={() => void refreshDevices()}
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold">Player</h2>
+              <p className="mt-1 text-sm text-cue-muted">
+                Load from the library, service order, guest import, or a local audio file.
+              </p>
+
+              <button
+                className="mt-5 rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
+                type="button"
+                onClick={() => void handlePickTrack()}
+              >
+                Choose Audio File
+              </button>
 
           <div className="mt-5 rounded-md border border-cue-line bg-cue-panel p-4">
             <div className="text-sm font-semibold">{track?.fileName ?? "No track loaded"}</div>
@@ -1275,102 +1344,11 @@ export function App() {
           <div className="mt-5 rounded-md border border-cue-line px-3 py-2 text-sm text-cue-muted">
             Status: <span className="font-semibold text-cue-ink">{status}</span>. {message}
           </div>
-        </div>
-      </section>
-
-      {isGuestModalOpen && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/35 px-4">
-          <div className="w-full max-w-lg rounded-lg border border-cue-line bg-white p-5 shadow-xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Add Guest Song</h2>
-                <p className="mt-1 text-sm text-cue-muted">
-                  The file will be copied into this service&apos;s Incoming folder.
-                </p>
-              </div>
-              <button
-                className="rounded-md border border-cue-line px-3 py-1.5 text-sm font-semibold hover:bg-cue-panel"
-                type="button"
-                onClick={() => setIsGuestModalOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-
-            <div
-              className="mt-5 rounded-md border border-dashed border-cue-line bg-cue-panel px-4 py-6 text-center"
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={handleGuestDrop}
-            >
-              <div className="text-sm font-semibold">Drop MP3, WAV, or M4A here</div>
-              <div className="mt-1 break-all text-xs text-cue-muted">
-                {guestSourceFilePath || "or browse for a guest file"}
-              </div>
-              <button
-                className="mt-4 rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
-                type="button"
-                onClick={() => void handlePickGuestFile()}
-              >
-                Browse
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-4">
-              <label className="block text-sm font-medium">
-                Section
-                <select
-                  className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
-                  value={activeGuestSectionId}
-                  onChange={(event) => setGuestSectionId(event.target.value)}
-                >
-                  {orderedSections.map((section) => (
-                    <option key={section.id} value={section.id}>
-                      {section.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-sm font-medium">
-                Guest or group name
-                <input
-                  className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
-                  placeholder="Optional"
-                  value={guestName}
-                  onChange={(event) => setGuestName(event.target.value)}
-                />
-              </label>
-
-              <label className="block text-sm font-medium">
-                Song title
-                <input
-                  className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
-                  value={guestSongTitle}
-                  onChange={(event) => setGuestSongTitle(event.target.value)}
-                />
-              </label>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
-                type="button"
-                onClick={() => setIsGuestModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
-                type="button"
-                disabled={isImportingGuest || !guestSourceFilePath}
-                onClick={() => void handleImportGuestSong()}
-              >
-                Add to Service
-              </button>
             </div>
           </div>
         </div>
-      )}
+      </section>
+
     </main>
   );
 }
