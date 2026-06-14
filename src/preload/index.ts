@@ -30,6 +30,45 @@ type LibraryScanResult = {
   index: LibraryIndex;
 };
 
+type TrackCategory = "Youth" | "Choir" | "Solo" | "Guest" | "Other" | "Custom";
+
+type ScheduleItem = {
+  id: string;
+  trackId: string;
+  customTitle?: string;
+  notes?: string;
+  sortOrder: number;
+  status: "ready" | "missing" | "played";
+};
+
+type ScheduleSection = {
+  id: string;
+  name: string;
+  type: TrackCategory;
+  sortOrder: number;
+  items: ScheduleItem[];
+};
+
+type ServiceSchedule = {
+  id: string;
+  name: string;
+  date: string;
+  sections: ScheduleSection[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ScheduleSaveResult = {
+  schedule: ServiceSchedule;
+  filePath: string;
+  schedulesDirectory: string;
+};
+
+type ScheduleLoadResult = {
+  schedule: ServiceSchedule;
+  filePath: string;
+};
+
 const serviceCue = {
   readSettings: () => ipcRenderer.invoke("settings:read") as Promise<AppSettings>,
   updateSettings: (settings: Partial<AppSettings>) =>
@@ -38,6 +77,9 @@ const serviceCue = {
   chooseMasterFolder: () =>
     ipcRenderer.invoke("library:chooseMasterFolder") as Promise<LibraryScanResult | null>,
   rescanLibrary: () => ipcRenderer.invoke("library:rescan") as Promise<LibraryScanResult>,
+  saveSchedule: (schedule: ServiceSchedule) =>
+    ipcRenderer.invoke("schedule:save", schedule) as Promise<ScheduleSaveResult>,
+  loadSchedule: () => ipcRenderer.invoke("schedule:load") as Promise<ScheduleLoadResult | null>,
   pickAudioFile: () => ipcRenderer.invoke("audio:pickFile") as Promise<string | null>,
   readAudioFile: (filePath: string) =>
     ipcRenderer.invoke("audio:readFile", filePath) as Promise<ArrayBuffer>,

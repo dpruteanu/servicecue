@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
-import { basename, extname, join, relative } from "node:path";
+import { basename, dirname, extname, join, relative } from "node:path";
 import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { is } from "@electron-toolkit/utils";
@@ -30,6 +30,34 @@ type LibraryIndex = {
   masterFolderPath?: string;
 };
 
+type TrackCategory = "Youth" | "Choir" | "Solo" | "Guest" | "Other" | "Custom";
+
+type ScheduleItem = {
+  id: string;
+  trackId: string;
+  customTitle?: string;
+  notes?: string;
+  sortOrder: number;
+  status: "ready" | "missing" | "played";
+};
+
+type ScheduleSection = {
+  id: string;
+  name: string;
+  type: TrackCategory;
+  sortOrder: number;
+  items: ScheduleItem[];
+};
+
+type ServiceSchedule = {
+  id: string;
+  name: string;
+  date: string;
+  sections: ScheduleSection[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 const defaultSettings: AppSettings = {
   masterFolderPath: "",
   outputDeviceId: "default",
@@ -46,6 +74,18 @@ function getSettingsPath() {
 
 function getLibraryIndexPath() {
   return join(app.getPath("userData"), "library-index.json");
+}
+
+function getChurchMediaRoot(masterFolderPath: string) {
+  if (basename(masterFolderPath).toLowerCase() === "negativ library") {
+    return dirname(masterFolderPath);
+  }
+
+  return masterFolderPath;
+}
+
+function getSchedulesDirectory(settings: AppSettings) {
+  return join(getChurchMediaRoot(settings.masterFolderPath), "Service Files", "Schedules");
 }
 
 async function readSettings(): Promise<AppSettings> {
@@ -108,6 +148,11 @@ function folderTypeFromPath(filePath: string): LibraryTrack["folderType"] {
 function idForTrack(masterFolderPath: string, filePath: string) {
   const relativePath = relative(masterFolderPath, filePath).replaceAll("\\", "/");
   return relativePath.replace(/^01 - Active\//i, "");
+}
+
+function safeScheduleFileName(schedule: ServiceSchedule) {
+  const baseName = `${schedule.date} ${schedule.name}`.trim() || "Service Schedule";
+  return `${baseName.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/\s+/g, " ").trim()}.json`;
 }
 
 async function collectAudioFiles(directoryPath: string): Promise<string[]> {
@@ -260,6 +305,47 @@ app.whenReady().then(() => {
     await writeSettings({ ...settings, lastScannedAt: index.scannedAt });
 
     return { settings: await readSettings(), index };
+  });
+
+  ipcMain.handle("schedule:save", async (_event, schedule: ServiceSchedule) => {
+    const settings = await readSettings();
+
+    if (!settings.masterFolderPath) {
+      throw new Error("Choose a master library folder before saving schedules.");
+    }
+
+    const schedulesDirectory = getSchedulesDirectory(settings);
+    const scheduleToSave = {
+      ...schedule,
+      updatedAt: new Date().toISOString(),
+    };
+    const filePath = join(schedulesDirectory, safeScheduleFileName(scheduleToSave));
+
+    await mkdir(schedulesDirectory, { recursive: true });
+    await writeFile(filePath, JSON.stringify(scheduleToSave, null, 2), "utf-8");
+
+    return { schedule: scheduleToSave, filePath, schedulesDirectory };
+  });
+
+  ipcMain.handle("schedule:load", async () => {
+    const settings = await readSettings();
+    const schedulesDirectory = settings.masterFolderPath ? getSchedulesDirectory(settings) : undefined;
+    const result = await dialog.showOpenDialog({
+      title: "Load service schedule",
+      defaultPath: schedulesDirectory,
+      properties: ["openFile"],
+      filters: [
+        { name: "Schedule JSON", extensions: ["json"] },
+      ],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    const filePath = result.filePaths[0];
+    const raw = await readFile(filePath, "utf-8");
+    return { schedule: JSON.parse(raw) as ServiceSchedule, filePath };
   });
 
   ipcMain.handle("audio:pickFile", async () => {

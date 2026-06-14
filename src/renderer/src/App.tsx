@@ -9,9 +9,17 @@ type DeviceOption = {
 type AppSettings = Awaited<ReturnType<typeof window.serviceCue.readSettings>>;
 type LibraryIndex = Awaited<ReturnType<typeof window.serviceCue.readLibraryIndex>>;
 type LibraryTrack = LibraryIndex["tracks"][number];
+type ServiceSchedule = Parameters<typeof window.serviceCue.saveSchedule>[0];
 type FolderFilter = "All" | "Romanian" | "English" | "Instrumental" | "Seasonal" | "Special";
 
 const folderFilters: FolderFilter[] = ["All", "Romanian", "English", "Instrumental", "Seasonal", "Special"];
+const defaultScheduleSections: Array<{ name: string; type: ServiceSchedule["sections"][number]["type"] }> = [
+  { name: "Youth", type: "Youth" },
+  { name: "Choir", type: "Choir" },
+  { name: "Solo", type: "Solo" },
+  { name: "Guest", type: "Guest" },
+  { name: "Other / Special", type: "Other" },
+];
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds <= 0) {
@@ -60,11 +68,37 @@ function formatScanTime(value?: string) {
   }).format(new Date(value));
 }
 
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function createDefaultSchedule(): ServiceSchedule {
+  const now = new Date().toISOString();
+  const date = todayDateString();
+
+  return {
+    id: crypto.randomUUID(),
+    name: `Sunday Service - ${date}`,
+    date,
+    sections: defaultScheduleSections.map((section, index) => ({
+      id: crypto.randomUUID(),
+      name: section.name,
+      type: section.type,
+      sortOrder: index,
+      items: [],
+    })),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 export function App() {
   const playerRef = useRef<ServiceCueAudioPlayer | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [libraryIndex, setLibraryIndex] = useState<LibraryIndex>({ tracks: [] });
   const [isScanning, setIsScanning] = useState(false);
+  const [schedule, setSchedule] = useState<ServiceSchedule>(() => createDefaultSchedule());
+  const [scheduleFilePath, setScheduleFilePath] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [folderFilter, setFolderFilter] = useState<FolderFilter>("All");
   const [devices, setDevices] = useState<DeviceOption[]>([]);
@@ -253,6 +287,53 @@ export function App() {
     }
   }
 
+  function handleNewSchedule() {
+    setSchedule(createDefaultSchedule());
+    setScheduleFilePath(null);
+    setMessage("Created a new empty service order.");
+  }
+
+  function updateScheduleName(name: string) {
+    setSchedule((currentSchedule) => ({
+      ...currentSchedule,
+      name,
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
+  function updateScheduleDate(date: string) {
+    setSchedule((currentSchedule) => ({
+      ...currentSchedule,
+      date,
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
+  async function handleSaveSchedule() {
+    try {
+      const result = await window.serviceCue.saveSchedule(schedule);
+      setSchedule(result.schedule);
+      setScheduleFilePath(result.filePath);
+      setMessage(`Saved schedule to ${result.filePath}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save the service schedule.");
+    }
+  }
+
+  async function handleLoadSchedule() {
+    try {
+      const result = await window.serviceCue.loadSchedule();
+
+      if (result) {
+        setSchedule(result.schedule);
+        setScheduleFilePath(result.filePath);
+        setMessage(`Loaded schedule from ${result.filePath}.`);
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not load the service schedule.");
+    }
+  }
+
   async function handlePickTrack() {
     const filePath = await window.serviceCue.pickAudioFile();
 
@@ -351,12 +432,12 @@ export function App() {
             <p className="text-sm text-cue-muted">Local backing-track player for church services</p>
           </div>
           <div className="rounded border border-cue-line px-3 py-1.5 text-sm font-medium text-cue-muted">
-            Build steps 1-6
+            Build steps 1-7
           </div>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-6 px-6 py-6 xl:grid-cols-[360px_360px_1fr]">
+      <section className="mx-auto grid max-w-7xl gap-6 px-6 py-6 xl:grid-cols-[360px_minmax(360px,1fr)_360px]">
         <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold">Library</h2>
           <p className="mt-1 text-sm text-cue-muted">
@@ -492,6 +573,82 @@ export function App() {
         </div>
 
         <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold">Service Order</h2>
+          <p className="mt-1 text-sm text-cue-muted">
+            JSON schedule model with the default service sections.
+          </p>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_150px]">
+            <label className="block text-sm font-medium">
+              Service name
+              <input
+                className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                value={schedule.name}
+                onChange={(event) => updateScheduleName(event.target.value)}
+              />
+            </label>
+
+            <label className="block text-sm font-medium">
+              Date
+              <input
+                className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                type="date"
+                value={schedule.date}
+                onChange={(event) => updateScheduleDate(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
+              type="button"
+              onClick={handleNewSchedule}
+            >
+              New
+            </button>
+            <button
+              className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
+              type="button"
+              onClick={() => void handleSaveSchedule()}
+            >
+              Save
+            </button>
+            <button
+              className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
+              type="button"
+              onClick={() => void handleLoadSchedule()}
+            >
+              Load
+            </button>
+          </div>
+
+          <div className="mt-4 rounded-md border border-cue-line bg-cue-panel p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-cue-muted">Schedule file</div>
+            <div className="mt-1 break-all text-sm">{scheduleFilePath ?? "Not saved yet"}</div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {schedule.sections
+              .slice()
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((section) => (
+                <div key={section.id} className="rounded-md border border-cue-line p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{section.name}</div>
+                      <div className="text-xs text-cue-muted">{section.type}</div>
+                    </div>
+                    <div className="rounded border border-cue-line px-2 py-1 text-xs font-semibold text-cue-muted">
+                      {section.items.length} songs
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold">Output</h2>
           <p className="mt-1 text-sm text-cue-muted">
             Pick the device that feeds the mixer. The choice is saved in Electron userData.
@@ -537,7 +694,7 @@ export function App() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
+        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm xl:col-span-2 xl:col-start-2">
           <h2 className="text-lg font-semibold">Local Track</h2>
           <p className="mt-1 text-sm text-cue-muted">
             This proves playback before the library index and schedule builder exist.
