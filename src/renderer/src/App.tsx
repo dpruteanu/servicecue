@@ -6,6 +6,9 @@ type DeviceOption = {
   label: string;
 };
 
+type AppSettings = Awaited<ReturnType<typeof window.serviceCue.readSettings>>;
+type LibraryIndex = Awaited<ReturnType<typeof window.serviceCue.readLibraryIndex>>;
+
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds <= 0) {
     return "0:00";
@@ -25,8 +28,22 @@ function outputLabel(device: MediaDeviceInfo, index: number) {
   return device.label || `Audio output ${index + 1}`;
 }
 
+function formatScanTime(value?: string) {
+  if (!value) {
+    return "Never";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 export function App() {
   const playerRef = useRef<ServiceCueAudioPlayer | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [libraryIndex, setLibraryIndex] = useState<LibraryIndex>({ tracks: [] });
+  const [isScanning, setIsScanning] = useState(false);
   const [devices, setDevices] = useState<DeviceOption[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("default");
   const [missingSelectedDevice, setMissingSelectedDevice] = useState(false);
@@ -52,9 +69,39 @@ export function App() {
       return;
     }
 
-    window.serviceCue.readSettings().then((settings) => {
-      setSelectedDeviceId(settings.outputDeviceId);
-      void refreshDevices(settings.outputDeviceId);
+    let cancelled = false;
+
+    Promise.all([
+      window.serviceCue.readSettings(),
+      window.serviceCue.readLibraryIndex(),
+    ]).then(([nextSettings, nextIndex]) => {
+      if (cancelled) {
+        return;
+      }
+
+      setSettings(nextSettings);
+      setLibraryIndex(nextIndex);
+      setSelectedDeviceId(nextSettings.outputDeviceId);
+      void refreshDevices(nextSettings.outputDeviceId);
+
+      if (nextSettings.masterFolderPath) {
+        setIsScanning(true);
+        window.serviceCue.rescanLibrary().then((result) => {
+          if (!cancelled) {
+            setSettings(result.settings);
+            setLibraryIndex(result.index);
+            setMessage(`Startup scan complete. Indexed ${result.index.tracks.length} audio files.`);
+          }
+        }).catch((error: unknown) => {
+          if (!cancelled) {
+            setMessage(error instanceof Error ? error.message : "Could not scan the library on startup.");
+          }
+        }).finally(() => {
+          if (!cancelled) {
+            setIsScanning(false);
+          }
+        });
+      }
     }).catch((error: unknown) => {
       setMessage(error instanceof Error ? error.message : "Could not load ServiceCue settings.");
     });
@@ -70,7 +117,10 @@ export function App() {
       setCurrentTime(player.currentTimeSeconds);
     }, 200);
 
-    return () => window.clearInterval(timer);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -116,8 +166,51 @@ export function App() {
     setSelectedDeviceId(deviceId);
     setMissingSelectedDevice(false);
     await playerRef.current?.setOutputDevice(deviceId);
-    await window.serviceCue.updateSettings({ outputDeviceId: deviceId });
+    const nextSettings = await window.serviceCue.updateSettings({ outputDeviceId: deviceId });
+    setSettings(nextSettings);
     setMessage("Output device saved. Use Test Output to confirm it feeds the mixer.");
+  }
+
+  async function handleChooseMasterFolder() {
+    setIsScanning(true);
+
+    try {
+      const result = await window.serviceCue.chooseMasterFolder();
+
+      if (result) {
+        setSettings(result.settings);
+        setLibraryIndex(result.index);
+        setMessage(`Indexed ${result.index.tracks.length} audio files.`);
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not scan the selected folder.");
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
+  async function handleRescan() {
+    setIsScanning(true);
+
+    try {
+      const result = await window.serviceCue.rescanLibrary();
+      setSettings(result.settings);
+      setLibraryIndex(result.index);
+      setMessage(`Rescan complete. Indexed ${result.index.tracks.length} audio files.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not rescan the library.");
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
+  async function handleIncludeToggle(settingKey: "includeInbox" | "includeArchive" | "includeDoNotUse", value: boolean) {
+    const nextSettings = await window.serviceCue.updateSettings({ [settingKey]: value });
+    setSettings(nextSettings);
+
+    if (nextSettings.masterFolderPath) {
+      await handleRescan();
+    }
   }
 
   async function handlePickTrack() {
@@ -199,12 +292,94 @@ export function App() {
             <p className="text-sm text-cue-muted">Local backing-track player for church services</p>
           </div>
           <div className="rounded border border-cue-line px-3 py-1.5 text-sm font-medium text-cue-muted">
-            Audio spike: steps 1-4
+            Build steps 1-5
           </div>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-6 px-6 py-6 lg:grid-cols-[360px_1fr]">
+      <section className="mx-auto grid max-w-6xl gap-6 px-6 py-6 xl:grid-cols-[360px_360px_1fr]">
+        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold">Library</h2>
+          <p className="mt-1 text-sm text-cue-muted">
+            Choose the Negativ Library folder. ServiceCue indexes on open and manual rescan only.
+          </p>
+
+          <div className="mt-5 rounded-md border border-cue-line bg-cue-panel p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-cue-muted">Master folder</div>
+            <div className="mt-1 break-all text-sm">
+              {settings?.masterFolderPath || "No folder selected"}
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
+              type="button"
+              disabled={isScanning}
+              onClick={() => void handleChooseMasterFolder()}
+            >
+              Change Folder
+            </button>
+            <button
+              className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel disabled:cursor-not-allowed disabled:opacity-45"
+              type="button"
+              disabled={isScanning || !settings?.masterFolderPath}
+              onClick={() => void handleRescan()}
+            >
+              Rescan Library
+            </button>
+          </div>
+
+          <div className="mt-4 text-sm text-cue-muted">
+            <div>Tracks indexed: <span className="font-semibold text-cue-ink">{libraryIndex.tracks.length}</span></div>
+            <div>Last scanned: <span className="font-semibold text-cue-ink">{formatScanTime(settings?.lastScannedAt ?? libraryIndex.scannedAt)}</span></div>
+          </div>
+
+          <div className="mt-5 space-y-3 border-t border-cue-line pt-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                className="size-4 accent-cue-action"
+                type="checkbox"
+                checked={settings?.includeInbox ?? false}
+                onChange={(event) => void handleIncludeToggle("includeInbox", event.target.checked)}
+              />
+              Include Inbox
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                className="size-4 accent-cue-action"
+                type="checkbox"
+                checked={settings?.includeArchive ?? false}
+                onChange={(event) => void handleIncludeToggle("includeArchive", event.target.checked)}
+              />
+              Include Archive
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                className="size-4 accent-cue-action"
+                type="checkbox"
+                checked={settings?.includeDoNotUse ?? false}
+                onChange={(event) => void handleIncludeToggle("includeDoNotUse", event.target.checked)}
+              />
+              Include Do Not Use
+            </label>
+          </div>
+
+          <div className="mt-5 max-h-52 overflow-auto rounded-md border border-cue-line">
+            {libraryIndex.tracks.slice(0, 8).map((indexedTrack) => (
+              <div key={indexedTrack.id} className="border-b border-cue-line px-3 py-2 last:border-b-0">
+                <div className="truncate text-sm font-semibold">{indexedTrack.displayTitle}</div>
+                <div className="truncate text-xs text-cue-muted">
+                  {indexedTrack.folderType ?? "Audio"} · {formatTime(indexedTrack.durationSeconds ?? 0)}
+                </div>
+              </div>
+            ))}
+            {libraryIndex.tracks.length === 0 && (
+              <div className="px-3 py-6 text-sm text-cue-muted">No indexed tracks yet.</div>
+            )}
+          </div>
+        </div>
+
         <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold">Output</h2>
           <p className="mt-1 text-sm text-cue-muted">
