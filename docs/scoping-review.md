@@ -69,3 +69,7 @@ Electron, React, TypeScript, Tailwind for the shell and UI. `music-metadata` to 
 ## The four changes that matter most
 
 Promote output-device selection to MVP. Default the app to unity gain (Playback Volume at 100%, board owns final level). Drop chokidar for index-on-open plus a manual Rescan button, and drop SQLite from v0.1 for JSON stores. Collapse guest import to drop-file-pick-section. Everything else in the spec can ship close to as written.
+
+## Update 2026-06-14 (rev 3)
+
+Two of this review's recommendations were overridden to match the approved UX mockup, and that's a fine call. The library now filters by service group (Youth, Choir, Solo, Other) rather than folder trait, with each track carrying an assigned group; and guest import lives in a permanent right-side panel rather than a modal. The same-song-different-week concern behind the trait-only recommendation still holds in principle, but it's mitigated because the group tag is only a default and browsing aid, not a restriction on what you can add where. Everything else in this review stands: Web Audio, JSON over SQLite, no chokidar, output-device selection, the gain-staging and fade points, and the audio-first build order. See the spec's Decision Log, rev 3.

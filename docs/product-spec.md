@@ -71,11 +71,11 @@ The schedule contains sections such as:
 The volunteer adds songs into the correct section.
 Songs can be added from the master library or by importing guest MP3 files.
 
-Organizing principle (decided): the master library is organized by stable file traits (language, type, active vs archive, usable vs do-not-use). The schedule is organized by who is singing (Youth, Choir, Solo, Guest, Other). The same track may be used by Youth one week and a soloist the next, so service sections live in the schedule, never as permanent master-library folders. A song's usual group is stored as app metadata (`default_group`), not by where the file sits.
+Organizing principle (decided, rev 3 — adopt the mockup): the library is browsed and filtered by service group (Youth, Choir, Solo, Other). Each track carries an assigned group, shown in the library Group column and used as the filter key. Files on disk are still kept in trait folders (language, type, active vs archive, usable vs do-not-use) for hygiene, but the in-app filter is by group. The group tag is a browsing aid and default, not a restriction: any track can still be added to any section regardless of its tag. This reverses the earlier trait-only-filter decision; the trade-off is that a track used by Youth one week and a soloist the next carries a single default group, which is acceptable because the tag does not limit what you can add where.
 
 ### Guest Song Workflow
 A guest comes before service and sends an MP3 file.
-The volunteer clicks Add Guest Song and drops the file into the modal.
+The volunteer drags the file into the Import Guest File panel (always visible on the right).
 The app asks only for:
 
 * Section (defaults to a new Guest section)
@@ -131,9 +131,9 @@ The MVP should include:
 * MP3 indexing, with WAV and M4A support (free with the Web Audio layer)
 * JSON-based storage: settings, library index, metadata overrides, and per-service schedules
 * Fast search with Romanian diacritics-insensitive matching
-* Library filters by folder trait (Romanian, English, Instrumental, Seasonal, Special, plus the excluded-by-default Inbox / Archive / Do Not Use)
+* Library filters by service group (All, Youth, Choir, Solo, Other)
 * Service schedule builder: add section, rename section, add tracks, drag to reorder
-* Quick guest import: drop file, pick section, done; file copied into the local service folder
+* Permanent Import Guest File panel; quick import: drop file, pick section, done; file copied into the local service folder
 * Audio output device selector, remembered across restarts, with a Test Output button
 * Play / pause / stop / restart, previous / next
 * Web Audio fade out, plus a micro-fade on stop to prevent speaker pops
@@ -151,7 +151,6 @@ Do not build these in the first version:
 * SQLite (use JSON stores first; revisit in v0.2 only if JSON gets painful)
 * chokidar / live folder watching
 * Metadata editor, key tracking, full tagging system
-* Permanent right-side import panel
 * Live Edit unlock inside Live Mode
 * Cloud sync, user accounts, permissions
 * Mobile app, web dashboard
@@ -314,16 +313,12 @@ Contains:
 * Current master folder path
 * Change folder button
 * Search input
-* Library filters (folder traits, not service sections):
+* Library filters (service groups):
    * All
-   * Romanian
-   * English
-   * Instrumental
-   * Seasonal
-   * Special
-   * Inbox (off by default)
-   * Archive (off by default)
-   * Do Not Use (off by default)
+   * Youth
+   * Choir
+   * Solo
+   * Other
 * Track list table
 
 Track list columns:
@@ -364,10 +359,9 @@ Default sections:
 
 There should be a clear Add Section button.
 
-### Add Guest Song (modal, not a permanent panel)
-There is no permanent right-side import panel. A clear "+ Add Guest Song" button (top or center) opens a small modal. The three persistent regions are Library (left), Service Order (center), and Player (bottom).
-
-The modal contains:
+### Right Panel — Import Guest File
+Title: Import Guest File or Add Guest Song
+Always visible as the third column. Contains:
 
 * Drag-and-drop box, or browse
 * Section selector (defaults to a new Guest section)
@@ -385,6 +379,8 @@ Guest/Group Name: (optional)
 Song Title: (auto-filled from filename)
 [Add to Service]
 ```
+
+The four persistent regions are Library (left), Service Order (center), Import Guest File (right), and Player (bottom).
 
 ### Bottom Panel — Player
 Always visible.
@@ -455,7 +451,7 @@ export type Track = {
   displayTitle: string;
   durationSeconds?: number;
   folderType?: "Romanian" | "English" | "Instrumental" | "Seasonal" | "Special";
-  defaultGroup?: "Youth" | "Choir" | "Solo" | "Other";
+  defaultGroup?: "Youth" | "Choir" | "Solo" | "Other";  // shown in the library Group column; the library filters on this
   source: "library" | "guest_import";
 };
 
@@ -614,8 +610,8 @@ Search should match:
 
 * File name
 * Display title
+* Group (Youth, Choir, Solo, Other)
 * Folder type (Romanian, English, Instrumental, Seasonal, Special)
-* Default group, where set
 
 ### Romanian diacritics-insensitive search (MVP)
 Diacritics-insensitive matching is in the MVP, not a future nicety. `Fii Binecuvântat` and `Fii Binecuvantat` must behave as the same search. Normalize both the query and the indexed text:
@@ -915,8 +911,8 @@ Name (decided 2026-06-14): the product is **ServiceCue**, tagline "Local backing
 * Drop chokidar. Index on app open, plus a manual Rescan Library button and a Last scanned at timestamp. (Section 5, Section 7)
 * Drop SQLite for v0.1. Use JSON stores (settings.json, library-index.json, metadata-overrides.json) in userData; schedules stay as per-service JSON. Revisit SQLite in v0.2 only if JSON gets painful. This reverses the rev 1 SQLite decision. (Section 6, Section 11)
 * Build the playback layer on the Web Audio API, not Howler, because output routing (`setSinkId`) and clean gain-node fades both need it. Add a 10 to 20 ms micro-fade on Stop. (Section 6, Section 12)
-* Library filters are folder traits (Romanian, English, Instrumental, Seasonal, Special, plus excluded-by-default Inbox/Archive/Do Not Use), not Youth/Choir/Solo, which are schedule sections. (Section 8)
-* Guest import is a modal, not a permanent panel. Flow is drop file, pick section, add. Title defaults to filename, name optional, no notes field, duplicates auto-numbered. (Section 8, Section 14)
+* Library filters are folder traits (Romanian, English, Instrumental, Seasonal, Special, plus excluded-by-default Inbox/Archive/Do Not Use), not Youth/Choir/Solo, which are schedule sections. (Superseded in rev 3.)
+* Guest import is a modal, not a permanent panel. Flow is drop file, pick section, add. Title defaults to filename, name optional, no notes field, duplicates auto-numbered. (Superseded in rev 3: import flow unchanged, but it lives in a permanent panel.)
 * Live Mode is playback only. No Live Edit unlock. (Section 9)
 * Cut from MVP metadata: key, language, track-level notes, lastUsedAt, category, and the metadata editor. Filenames and folders are the truth. Keep per-schedule-item notes for service cues. `played` is transient per-service state, not history. (Section 10)
 * Romanian diacritics-insensitive search is MVP. (Section 13)
@@ -924,3 +920,9 @@ Name (decided 2026-06-14): the product is **ServiceCue**, tagline "Local backing
 * Build audio routing and playback before the data layer and UI polish. (Section 22)
 * Distribution: manual electron-builder builds, portable .exe, unsigned for church use. CI, NSIS installer, and code signing are for public v1, not v0.1.
 * License: code under Apache-2.0, docs under CC BY 4.0, the ServiceCue name and logo under a trademark notice (not open-licensed). No copyrighted backing tracks in the repo or demo build; demo audio only. LICENSE, NOTICE, and README at root from day one. (See [OSS and Distribution Notes](oss-and-distribution.md).)
+
+2026-06-14 (rev 3, adopt the approved visual mockup)
+
+* Library filters by service group (All, Youth, Choir, Solo, Other), not folder traits. Each track carries an assigned group shown in the library Group column. Files on disk stay in trait folders; the in-app filter is by group. The group tag is a default and browsing aid, not a restriction. Reverses the rev-2 trait-filter decision. Trade-off accepted: a track gets one default group even if used by different groups week to week. (Section 4, Section 8, Section 10)
+* Guest import returns to a permanent right-side Import Guest File panel (four persistent regions: Library, Service Order, Import, Player). The quick drop-file, pick-section, add flow is unchanged; only the modal is reverted. Reverses the rev-2 modal decision. (Section 5, Section 8)
+* Reason: match the approved UX mockup. This overrides the scoping review's recommendations on these two points; all other rev-1/rev-2 decisions stand (Web Audio, JSON over SQLite, no chokidar, output-device selection, Playback Volume, Live Mode playback-only, diacritics search, audio-first build order, licensing).
