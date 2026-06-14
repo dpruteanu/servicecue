@@ -45,11 +45,19 @@ function createWindow() {
     title: "ServiceCue",
     backgroundColor: "#f6f8fb",
     webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
+      preload: join(__dirname, "../preload/index.mjs"),
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  mainWindow.webContents.on("console-message", (event) => {
+    console.log(`[renderer:${event.level}] ${event.message}`);
+  });
+
+  mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedUrl) => {
+    console.error(`Renderer failed to load ${validatedUrl}: ${errorCode} ${errorDescription}`);
   });
 
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {

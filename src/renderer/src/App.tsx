@@ -47,9 +47,16 @@ export function App() {
   useEffect(() => {
     playerRef.current = new ServiceCueAudioPlayer();
 
+    if (!window.serviceCue) {
+      setMessage("ServiceCue preload API did not load. Restart the app and check the terminal for startup errors.");
+      return;
+    }
+
     window.serviceCue.readSettings().then((settings) => {
       setSelectedDeviceId(settings.outputDeviceId);
       void refreshDevices(settings.outputDeviceId);
+    }).catch((error: unknown) => {
+      setMessage(error instanceof Error ? error.message : "Could not load ServiceCue settings.");
     });
 
     const timer = window.setInterval(() => {
