@@ -56,6 +56,16 @@ export class ServiceCueAudioPlayer {
     return this.sourceElement.currentTime;
   }
 
+  seek(seconds: number) {
+    if (!this.sourceElement.src || !Number.isFinite(seconds)) {
+      return;
+    }
+
+    const duration = this.durationSeconds;
+    const nextTime = duration > 0 ? Math.min(Math.max(seconds, 0), duration) : Math.max(seconds, 0);
+    this.sourceElement.currentTime = nextTime;
+  }
+
   async setOutputDevice(deviceId: string) {
     if (!this.sink.setSinkId) {
       throw new Error("Output device selection is not supported in this Electron runtime.");

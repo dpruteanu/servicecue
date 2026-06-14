@@ -1051,6 +1051,11 @@ export function App() {
     setStatus("fading");
   }
 
+  function handleSeek(seconds: number) {
+    playerRef.current?.seek(seconds);
+    setCurrentTime(seconds);
+  }
+
   async function handleTestOutput() {
     try {
       await playerRef.current?.playTestTone(selectedDeviceId);
@@ -1076,7 +1081,7 @@ export function App() {
   }
 
   return (
-    <main className="flex h-screen min-h-[680px] flex-col overflow-hidden bg-cue-panel text-cue-ink">
+    <main className="flex h-screen min-h-0 flex-col overflow-hidden bg-cue-panel text-cue-ink">
       <header className="border-b border-cue-line bg-white">
         <div className="mx-auto flex w-full max-w-[1680px] flex-wrap items-center gap-3 px-3 py-2 sm:px-4 xl:flex-nowrap xl:px-5 xl:py-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -1153,12 +1158,12 @@ export function App() {
 
       <section
         className={[
-          "mx-auto grid min-h-0 w-full max-w-[1680px] flex-1 gap-3 overflow-auto px-3 py-3 lg:px-4 lg:py-4 xl:overflow-hidden",
-          isLiveMode ? "grid-cols-1" : "lg:grid-cols-[minmax(280px,0.85fr)_minmax(420px,1.35fr)] 2xl:grid-cols-[minmax(320px,0.9fr)_minmax(500px,1.55fr)_minmax(290px,0.8fr)]",
+          "mx-auto grid min-h-0 w-full max-w-[1680px] flex-1 gap-3 overflow-auto px-3 py-3 md:px-4 md:py-4 xl:overflow-hidden",
+          isLiveMode ? "grid-cols-1" : "md:grid-cols-[minmax(260px,0.8fr)_minmax(390px,1.35fr)] 2xl:grid-cols-[minmax(320px,0.9fr)_minmax(500px,1.55fr)_minmax(290px,0.8fr)]",
         ].join(" ")}
       >
         {!isLiveMode && (
-          <aside className="flex min-h-[360px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm lg:min-h-0 2xl:h-full">
+          <aside className="flex min-h-[320px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm md:min-h-0 2xl:h-full">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Library</h2>
               <span className="text-xs font-semibold text-cue-muted">{libraryIndex.tracks.length} tracks</span>
@@ -1254,7 +1259,7 @@ export function App() {
           </aside>
         )}
 
-        <section className="flex min-h-[420px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm lg:min-h-0 2xl:h-full">
+        <section className="flex min-h-[360px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm md:min-h-0 2xl:h-full">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">{isLiveMode ? "Service Order" : "Today's Schedule"}</h2>
@@ -1439,25 +1444,25 @@ export function App() {
         </section>
 
         {!isLiveMode && (
-          <aside className="flex min-h-[360px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm lg:col-span-2 lg:min-h-0 2xl:col-span-1 2xl:h-full 2xl:p-5">
+          <aside className="flex min-h-0 flex-col rounded-md border border-cue-line bg-white p-3 shadow-sm md:col-span-2 2xl:col-span-1 2xl:h-full 2xl:min-h-[320px] 2xl:p-5">
             <h2 className="text-lg font-semibold">Import Guest File</h2>
 
             <div
-              className="mt-5 flex min-h-44 flex-col items-center justify-center rounded-md border border-dashed border-cue-line bg-cue-panel px-6 py-8 text-center 2xl:mt-8 2xl:min-h-56"
+              className="mt-3 flex min-h-20 flex-col items-center justify-center rounded-md border border-dashed border-cue-line bg-cue-panel px-4 py-3 text-center 2xl:mt-8 2xl:min-h-56 2xl:px-6 2xl:py-8"
               onDragOver={(event) => event.preventDefault()}
               onDrop={handleGuestDrop}
             >
-              <FileAudio className="size-12 text-cue-muted" aria-hidden="true" />
-              <div className="mt-4 text-base font-semibold">{guestSourceFilePath ? titleFromFilePath(guestSourceFilePath) : "Drop MP3 here"}</div>
+              <FileAudio className="size-8 text-cue-muted 2xl:size-12" aria-hidden="true" />
+              <div className="mt-2 text-sm font-semibold 2xl:mt-4 2xl:text-base">{guestSourceFilePath ? titleFromFilePath(guestSourceFilePath) : "Drop MP3 here"}</div>
               <button className="mt-1 text-sm font-semibold text-cue-action hover:underline" type="button" onClick={() => void handlePickGuestFile()}>
                 or browse
               </button>
               {guestSourceFilePath && (
-                <div className="mt-3 max-w-full break-all text-xs text-cue-muted">{guestSourceFilePath}</div>
+                <div className="mt-2 max-w-full truncate text-xs text-cue-muted 2xl:mt-3 2xl:break-all">{guestSourceFilePath}</div>
               )}
             </div>
 
-            <div className="mt-5 grid gap-4">
+            <div className="mt-3 grid gap-3 md:grid-cols-[minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,1fr)] 2xl:mt-5 2xl:grid-cols-1 2xl:gap-4">
               <label className="block text-sm font-medium">
                 Section
                 <select
@@ -1494,7 +1499,7 @@ export function App() {
             </div>
 
             <button
-              className={buttonClass("primary") + " mt-5 w-full"}
+              className={buttonClass("primary") + " mt-3 w-full 2xl:mt-5"}
               type="button"
               disabled={isImportingGuest || !guestSourceFilePath}
               onClick={() => void handleImportGuestSong()}
@@ -1503,67 +1508,80 @@ export function App() {
               Add to Service
             </button>
 
-            <p className="mt-4 text-center text-sm text-cue-muted">
+            <p className="mt-3 hidden text-center text-sm text-cue-muted 2xl:block">
               File is copied into today's service folder.
             </p>
           </aside>
         )}
       </section>
 
-      <footer className="shrink-0 border-t border-cue-line bg-white px-3 py-2 lg:px-4 lg:py-3">
-        <div className="mx-auto grid max-w-[1680px] items-center gap-3 lg:grid-cols-[minmax(260px,1fr)_auto] xl:grid-cols-[minmax(280px,1fr)_minmax(360px,auto)_minmax(320px,0.9fr)] xl:gap-4">
+      <footer className="shrink-0 border-t border-cue-line bg-white px-3 py-2 md:px-4">
+        <div className="mx-auto grid max-w-[1680px] items-center gap-3 md:grid-cols-[minmax(230px,1fr)_minmax(330px,auto)_minmax(250px,0.8fr)] xl:grid-cols-[minmax(280px,1fr)_minmax(360px,auto)_minmax(320px,0.9fr)] xl:gap-4">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-md border border-cue-line bg-cue-panel text-cue-muted lg:size-14 xl:size-16">
-              <Music className="size-6 lg:size-7 xl:size-8" aria-hidden="true" />
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-md border border-cue-line bg-cue-panel text-cue-muted xl:size-16">
+              <Music className="size-6 xl:size-8" aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-cue-action">Now Playing</div>
-              <div className="truncate text-base font-semibold lg:text-lg">{nowPlayingTitle}</div>
+              <div className="truncate text-base font-semibold xl:text-lg">{nowPlayingTitle}</div>
               <div className="truncate text-sm text-cue-ink">{nowPlayingGroup}</div>
               <div className="mt-2 flex items-center gap-3">
                 <span className="w-10 text-sm tabular-nums">{formatTime(currentTime)}</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-cue-line">
-                  <div className="h-full rounded-full bg-cue-action transition-[width]" style={{ width: `${progressPercent}%` }} />
-                </div>
+                <label className="relative h-5 flex-1 cursor-pointer" title="Scrub playback position">
+                  <span className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-cue-line">
+                    <span className="block h-full rounded-full bg-cue-action transition-[width]" style={{ width: `${progressPercent}%` }} />
+                  </span>
+                  <input
+                    className="absolute inset-0 h-5 w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                    min={0}
+                    max={Math.max(track?.durationSeconds ?? 0, 0)}
+                    step={0.1}
+                    type="range"
+                    value={Math.min(currentTime, track?.durationSeconds ?? 0)}
+                    disabled={!track}
+                    aria-label="Playback position"
+                    onChange={(event) => handleSeek(Number(event.target.value))}
+                  />
+                </label>
                 <span className="w-10 text-right text-sm tabular-nums">{formatTime(track?.durationSeconds ?? 0)}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2 xl:gap-3">
-            <button className="flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-xs font-semibold hover:bg-cue-panel disabled:opacity-45 xl:h-16 xl:w-20 xl:text-sm" type="button" disabled={!track} onClick={() => void handleRestart()}>
+          <div className="flex items-center justify-center gap-1.5 xl:gap-3">
+            <button className="flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-md border border-cue-line bg-white text-[11px] font-semibold hover:bg-cue-panel disabled:opacity-45 xl:h-16 xl:w-20 xl:gap-1 xl:text-sm" type="button" disabled={!track} onClick={() => void handleRestart()}>
               <RotateCcw className="size-5" aria-hidden="true" />
               Restart
             </button>
-            <button className="flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-xs font-semibold hover:bg-cue-panel disabled:opacity-45 xl:h-16 xl:w-20 xl:text-sm" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(-1)}>
+            <button className="flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-md border border-cue-line bg-white text-[11px] font-semibold hover:bg-cue-panel disabled:opacity-45 xl:h-16 xl:w-20 xl:gap-1 xl:text-sm" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(-1)}>
               <SkipBack className="size-5" aria-hidden="true" />
               Previous
             </button>
             <button
-              className="flex size-16 items-center justify-center rounded-full bg-cue-action text-white shadow-lg transition hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45 xl:size-20"
+              className="flex size-14 items-center justify-center rounded-full bg-cue-action text-white shadow-lg transition hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45 xl:size-20"
               type="button"
               disabled={!track}
               onClick={() => void handlePlayPause()}
               title={isPlaying ? "Pause" : "Play"}
             >
-              {isPlaying ? <Pause className="size-8 fill-current xl:size-9" aria-hidden="true" /> : <Play className="ml-1 size-8 fill-current xl:size-9" aria-hidden="true" />}
+              {isPlaying ? <Pause className="size-7 fill-current xl:size-9" aria-hidden="true" /> : <Play className="ml-1 size-7 fill-current xl:size-9" aria-hidden="true" />}
             </button>
-            <button className="flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-xs font-semibold hover:bg-cue-panel disabled:opacity-45 xl:h-16 xl:w-20 xl:text-sm" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(1)}>
+            <button className="flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-md border border-cue-line bg-white text-[11px] font-semibold hover:bg-cue-panel disabled:opacity-45 xl:h-16 xl:w-20 xl:gap-1 xl:text-sm" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(1)}>
               <SkipForward className="size-5" aria-hidden="true" />
               Next
             </button>
-            <button className={["flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-md border text-xs font-semibold transition disabled:opacity-45 xl:h-16 xl:w-20 xl:text-sm", track ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" : "border-cue-line bg-white text-cue-muted"].join(" ")} type="button" disabled={!track} onClick={() => void handleStop()}>
+            <button className={["flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-md border text-[11px] font-semibold transition disabled:opacity-45 xl:h-16 xl:w-20 xl:gap-1 xl:text-sm", track ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" : "border-cue-line bg-white text-cue-muted"].join(" ")} type="button" disabled={!track} onClick={() => void handleStop()}>
               <Square className="size-5 fill-current" aria-hidden="true" />
               Stop
             </button>
           </div>
 
-          <div className="grid gap-3 border-cue-line lg:col-span-2 lg:grid-cols-[150px_1fr] xl:col-span-1 xl:border-l xl:pl-5">
+          <div className="grid gap-2 border-cue-line md:grid-cols-[116px_1fr] xl:border-l xl:pl-5">
             <div>
               <label className="block text-sm font-medium">
                 Fade Out
                 <select
-                  className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-cue-line bg-white px-2 py-1.5 text-sm xl:mt-2 xl:px-3 xl:py-2"
                   value={fadeSeconds}
                   onChange={(event) => setFadeSeconds(Number(event.target.value))}
                 >
@@ -1572,14 +1590,14 @@ export function App() {
                   ))}
                 </select>
               </label>
-              <button className={warningButtonClass(status === "playing") + " mt-2 w-full"} type="button" disabled={!track || status !== "playing"} onClick={() => void handleFadeOut()}>
+              <button className={warningButtonClass(status === "playing") + " mt-1 w-full px-2 py-1.5 xl:mt-2 xl:px-4 xl:py-2"} type="button" disabled={!track || status !== "playing"} onClick={() => void handleFadeOut()}>
                 Fade Out
               </button>
             </div>
             <div>
               <label className="block text-sm font-medium text-cue-action">
                 Volume
-                <div className="mt-4 flex items-center gap-3">
+                <div className="mt-2 flex items-center gap-2 xl:mt-4 xl:gap-3">
                   <Volume2 className="size-5 text-cue-ink" aria-hidden="true" />
                   <input
                     className="w-full accent-cue-action"
@@ -1592,7 +1610,7 @@ export function App() {
                   <span className="w-12 text-right text-sm tabular-nums text-cue-ink">{volume}%</span>
                 </div>
               </label>
-              <button className={buttonClass("secondary") + " mt-2"} type="button" onClick={() => setVolume(100)}>
+              <button className={buttonClass("secondary") + " mt-1 px-3 py-1.5 text-xs xl:mt-2 xl:px-4 xl:py-2 xl:text-sm"} type="button" onClick={() => setVolume(100)}>
                 Reset to 100%
               </button>
               {volume < 80 && (
