@@ -16,6 +16,8 @@ type AppSettings = {
   includeDoNotUse: boolean;
 };
 
+type ServiceGroup = "Youth" | "Choir" | "Solo" | "Guest" | "Other";
+
 type LibraryTrack = {
   id: string;
   filePath: string;
@@ -23,6 +25,7 @@ type LibraryTrack = {
   displayTitle: string;
   durationSeconds?: number;
   folderType?: "Romanian" | "English" | "Instrumental" | "Seasonal" | "Special";
+  defaultGroup?: ServiceGroup;
   source: "library" | "guest_import";
 };
 
@@ -33,6 +36,19 @@ type LibraryIndex = {
 };
 
 type TrackCategory = "Youth" | "Choir" | "Solo" | "Guest" | "Other" | "Custom";
+
+type MetadataOverrides = {
+  tracks: Record<string, {
+    defaultGroup?: ServiceGroup;
+  }>;
+};
+
+type ScheduleListItem = {
+  name: string;
+  filePath: string;
+  date?: string;
+  updatedAt?: string;
+};
 
 type ScheduleItem = {
   id: string;
@@ -87,6 +103,10 @@ function getLibraryIndexPath() {
   return join(app.getPath("userData"), "library-index.json");
 }
 
+function getMetadataOverridesPath() {
+  return join(app.getPath("userData"), "metadata-overrides.json");
+}
+
 function getChurchMediaRoot(masterFolderPath: string) {
   if (basename(masterFolderPath).toLowerCase() === "negativ library") {
     return dirname(masterFolderPath);
@@ -132,7 +152,7 @@ async function readLibraryIndex(): Promise<LibraryIndex> {
 
   try {
     const raw = await readFile(indexPath, "utf-8");
-    return JSON.parse(raw) as LibraryIndex;
+    return applyMetadataOverrides(JSON.parse(raw) as LibraryIndex, await readMetadataOverrides());
   } catch {
     return { tracks: [] };
   }
@@ -141,6 +161,45 @@ async function readLibraryIndex(): Promise<LibraryIndex> {
 async function writeLibraryIndex(index: LibraryIndex) {
   await mkdir(app.getPath("userData"), { recursive: true });
   await writeFile(getLibraryIndexPath(), JSON.stringify(index, null, 2), "utf-8");
+}
+
+async function readMetadataOverrides(): Promise<MetadataOverrides> {
+  const overridesPath = getMetadataOverridesPath();
+
+  if (!existsSync(overridesPath)) {
+    return { tracks: {} };
+  }
+
+  try {
+    const raw = await readFile(overridesPath, "utf-8");
+    const parsed = JSON.parse(raw) as MetadataOverrides;
+    return { tracks: parsed.tracks ?? {} };
+  } catch {
+    return { tracks: {} };
+  }
+}
+
+async function writeMetadataOverrides(overrides: MetadataOverrides) {
+  await mkdir(app.getPath("userData"), { recursive: true });
+  await writeFile(getMetadataOverridesPath(), JSON.stringify(overrides, null, 2), "utf-8");
+}
+
+function defaultGroupForTrack(track: Pick<LibraryTrack, "source" | "defaultGroup">): ServiceGroup {
+  if (track.defaultGroup) {
+    return track.defaultGroup;
+  }
+
+  return track.source === "guest_import" ? "Guest" : "Other";
+}
+
+function applyMetadataOverrides(index: LibraryIndex, overrides: MetadataOverrides): LibraryIndex {
+  return {
+    ...index,
+    tracks: index.tracks.map((track) => ({
+      ...track,
+      defaultGroup: overrides.tracks[track.id]?.defaultGroup ?? defaultGroupForTrack(track),
+    })),
+  };
 }
 
 function cleanDisplayTitle(fileName: string) {
@@ -232,6 +291,8 @@ function scanRoots(settings: AppSettings) {
 }
 
 async function scanLibrary(settings: AppSettings): Promise<LibraryIndex> {
+  const overrides = await readMetadataOverrides();
+
   if (!settings.masterFolderPath || !existsSync(settings.masterFolderPath)) {
     return {
       tracks: [],
@@ -260,15 +321,16 @@ async function scanLibrary(settings: AppSettings): Promise<LibraryIndex> {
       displayTitle: cleanDisplayTitle(fileName),
       durationSeconds,
       folderType: folderTypeFromPath(filePath),
+      defaultGroup: "Other",
       source: "library",
     };
   }));
 
-  return {
+  return applyMetadataOverrides({
     tracks: tracks.sort((a, b) => a.displayTitle.localeCompare(b.displayTitle)),
     scannedAt: new Date().toISOString(),
     masterFolderPath: settings.masterFolderPath,
-  };
+  }, overrides);
 }
 
 function createWindow() {
@@ -312,6 +374,16 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("library:readIndex", readLibraryIndex);
+
+  ipcMain.handle("metadata:updateTrackGroup", async (_event, trackId: string, defaultGroup: ServiceGroup) => {
+    const overrides = await readMetadataOverrides();
+    overrides.tracks[trackId] = { ...overrides.tracks[trackId], defaultGroup };
+    await writeMetadataOverrides(overrides);
+
+    const index = await readLibraryIndex();
+    await writeLibraryIndex(index);
+    return index;
+  });
 
   ipcMain.handle("library:chooseMasterFolder", async () => {
     const result = await dialog.showOpenDialog({
@@ -359,6 +431,50 @@ app.whenReady().then(() => {
     await writeFile(filePath, JSON.stringify(scheduleToSave, null, 2), "utf-8");
 
     return { schedule: scheduleToSave, filePath, schedulesDirectory };
+  });
+
+  ipcMain.handle("schedule:list", async () => {
+    const settings = await readSettings();
+
+    if (!settings.masterFolderPath) {
+      return [] satisfies ScheduleListItem[];
+    }
+
+    const schedulesDirectory = getSchedulesDirectory(settings);
+
+    if (!existsSync(schedulesDirectory)) {
+      return [] satisfies ScheduleListItem[];
+    }
+
+    const entries = await readdir(schedulesDirectory, { withFileTypes: true });
+    const schedules = await Promise.all(entries
+      .filter((entry) => entry.isFile() && extname(entry.name).toLowerCase() === ".json")
+      .map(async (entry): Promise<ScheduleListItem> => {
+        const filePath = join(schedulesDirectory, entry.name);
+
+        try {
+          const raw = await readFile(filePath, "utf-8");
+          const schedule = JSON.parse(raw) as ServiceSchedule;
+          return {
+            name: schedule.name || basename(entry.name, ".json"),
+            filePath,
+            date: schedule.date,
+            updatedAt: schedule.updatedAt,
+          };
+        } catch {
+          return {
+            name: basename(entry.name, ".json"),
+            filePath,
+          };
+        }
+      }));
+
+    return schedules.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+  });
+
+  ipcMain.handle("schedule:loadByPath", async (_event, filePath: string) => {
+    const raw = await readFile(filePath, "utf-8");
+    return { schedule: JSON.parse(raw) as ServiceSchedule, filePath };
   });
 
   ipcMain.handle("schedule:load", async () => {
@@ -443,6 +559,7 @@ app.whenReady().then(() => {
       fileName: basename(destinationPath),
       displayTitle: request.songTitle || cleanDisplayTitle(originalFileName),
       durationSeconds,
+      defaultGroup: "Guest",
       source: "guest_import" as const,
     };
   });
@@ -493,6 +610,7 @@ app.whenReady().then(() => {
       fileName,
       displayTitle: cleanDisplayTitle(fileName),
       durationSeconds,
+      defaultGroup: "Guest",
       source: "guest_import" as const,
     };
   });

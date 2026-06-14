@@ -9,6 +9,8 @@ type AppSettings = {
   includeDoNotUse: boolean;
 };
 
+type ServiceGroup = "Youth" | "Choir" | "Solo" | "Guest" | "Other";
+
 type LibraryTrack = {
   id: string;
   filePath: string;
@@ -16,6 +18,7 @@ type LibraryTrack = {
   displayTitle: string;
   durationSeconds?: number;
   folderType?: "Romanian" | "English" | "Instrumental" | "Seasonal" | "Special";
+  defaultGroup?: ServiceGroup;
   source: "library" | "guest_import";
 };
 
@@ -69,6 +72,13 @@ type ScheduleLoadResult = {
   filePath: string;
 };
 
+type ScheduleListItem = {
+  name: string;
+  filePath: string;
+  date?: string;
+  updatedAt?: string;
+};
+
 type GuestImportRequest = {
   sourceFilePath: string;
   scheduleName: string;
@@ -83,12 +93,17 @@ const serviceCue = {
   updateSettings: (settings: Partial<AppSettings>) =>
     ipcRenderer.invoke("settings:update", settings) as Promise<AppSettings>,
   readLibraryIndex: () => ipcRenderer.invoke("library:readIndex") as Promise<LibraryIndex>,
+  updateTrackGroup: (trackId: string, defaultGroup: ServiceGroup) =>
+    ipcRenderer.invoke("metadata:updateTrackGroup", trackId, defaultGroup) as Promise<LibraryIndex>,
   chooseMasterFolder: () =>
     ipcRenderer.invoke("library:chooseMasterFolder") as Promise<LibraryScanResult | null>,
   rescanLibrary: () => ipcRenderer.invoke("library:rescan") as Promise<LibraryScanResult>,
+  listSchedules: () => ipcRenderer.invoke("schedule:list") as Promise<ScheduleListItem[]>,
   saveSchedule: (schedule: ServiceSchedule) =>
     ipcRenderer.invoke("schedule:save", schedule) as Promise<ScheduleSaveResult>,
   loadSchedule: () => ipcRenderer.invoke("schedule:load") as Promise<ScheduleLoadResult | null>,
+  loadScheduleByPath: (filePath: string) =>
+    ipcRenderer.invoke("schedule:loadByPath", filePath) as Promise<ScheduleLoadResult>,
   pickGuestFile: () => ipcRenderer.invoke("guest:pickFile") as Promise<string | null>,
   importGuestSong: (request: GuestImportRequest) =>
     ipcRenderer.invoke("guest:import", request) as Promise<LibraryTrack>,
