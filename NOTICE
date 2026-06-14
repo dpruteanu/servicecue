@@ -1,12 +1,8 @@
 ServiceCue
-Copyright 2026 Dima Pruteanu
+Copyright 2026 ServiceCue contributors
 
-This product is licensed under the Apache License, Version 2.0 (the "License");
-you may not use this product except in compliance with the License.
-You may obtain a copy of the License at
+This product includes software developed by the ServiceCue contributors.
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-The ServiceCue name and logo are trademarks of the project maintainers and are
-not licensed under Apache-2.0. ServiceCue is an open-source church backing-track
-player and is not affiliated with any other product of the same name.
+ServiceCue is an open-source local backing-track player for church services.
+The ServiceCue name and logo are trademarks of the project maintainers and
+are not licensed under the Apache License, Version 2.0.

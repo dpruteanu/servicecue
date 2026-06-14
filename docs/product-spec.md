@@ -798,7 +798,7 @@ Test with real church files.
 
 ### Guest Import Test
 
-* Drag MP3 into the Add Guest Song modal.
+* Drag MP3 into the Import Guest File panel.
 * Pick a section (no other fields required).
 * Confirm the file copied into the Incoming folder.
 * Restart app.

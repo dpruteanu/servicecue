@@ -10,8 +10,9 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "tsc --noEmit && electron-vite build",
-    "package:win": "pnpm build && electron-builder --win portable --x64",
-    "package:win:arm64": "pnpm build && electron-builder --win portable --arm64",
+    "package:win": "pnpm build && electron-builder --win --x64",
+    "package:win:portable": "pnpm build && electron-builder --win portable --x64",
+    "package:win:arm64": "pnpm build && electron-builder --win --arm64",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -45,12 +46,39 @@
       "output": "release"
     },
     "files": [
-      "out/**/*"
+      "out/**/*",
+      "LICENSE",
+      "NOTICE",
+      "README.md",
+      "CONTRIBUTING.md",
+      "SECURITY.md"
     ],
     "win": {
       "target": [
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ServiceCue"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}-${arch}.${ext}"
     }
   },
   "packageManager": "pnpm@10.30.3"
