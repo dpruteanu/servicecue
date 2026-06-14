@@ -134,7 +134,8 @@ async function collectAudioFiles(directoryPath: string): Promise<string[]> {
 }
 
 function scanRoots(settings: AppSettings) {
-  const roots = [join(settings.masterFolderPath, "01 - Active")];
+  const activeRoot = join(settings.masterFolderPath, "01 - Active");
+  const roots = [existsSync(activeRoot) ? activeRoot : settings.masterFolderPath];
 
   if (settings.includeInbox) {
     roots.push(join(settings.masterFolderPath, "00 - Inbox - Needs Sorting"));
