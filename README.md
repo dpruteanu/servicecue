@@ -6,7 +6,7 @@ ServiceCue is a local desktop app for churches to search backing tracks, build a
 
 ## Status
 
-Spec is locked. Implementation has not started. This repo currently holds the product spec and the decisions behind it. The build order and MVP scope are defined in [docs/product-spec.md](docs/product-spec.md).
+Spec is locked. Implementation has started. The current app covers development-priority steps 1-4: Electron shell, one-file local audio playback, remembered output-device selection with a Test Output tone, and Web Audio fade/micro-fade stop.
 
 ## Docs
 
@@ -34,7 +34,20 @@ Electron, React, TypeScript, Tailwind CSS, music-metadata, the Web Audio API (di
 
 ## Development
 
-Not scaffolded yet. The implementation should follow the build order in [docs/product-spec.md](docs/product-spec.md), Section 22.
+Install and run locally:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Build without packaging:
+
+```bash
+pnpm build
+```
+
+The implementation should continue to follow the build order in [docs/product-spec.md](docs/product-spec.md), Section 22. Do not start indexing, schedule storage, or UI polish until the audio/output-device checkpoint has been verified on the real service computer.
 
 ## License
 
