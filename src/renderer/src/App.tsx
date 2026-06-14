@@ -106,6 +106,7 @@ export function App() {
   const [schedule, setSchedule] = useState<ServiceSchedule>(() => createDefaultSchedule());
   const [scheduleFilePath, setScheduleFilePath] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => "");
+  const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [folderFilter, setFolderFilter] = useState<FolderFilter>("All");
   const [devices, setDevices] = useState<DeviceOption[]>([]);
@@ -439,6 +440,37 @@ export function App() {
     setMessage(`Added ${indexedTrack.displayTitle} to the service order.`);
   }
 
+  function handleTrackDragStart(event: React.DragEvent<HTMLDivElement>, indexedTrack: LibraryTrack) {
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("application/x-servicecue-track-id", indexedTrack.id);
+    event.dataTransfer.setData("text/plain", indexedTrack.displayTitle);
+  }
+
+  function handleSectionDragOver(event: React.DragEvent<HTMLDivElement>, sectionId: string) {
+    if (!event.dataTransfer.types.includes("application/x-servicecue-track-id")) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDragOverSectionId(sectionId);
+  }
+
+  function handleSectionDrop(event: React.DragEvent<HTMLDivElement>, sectionId: string) {
+    event.preventDefault();
+    setDragOverSectionId(null);
+
+    const trackId = event.dataTransfer.getData("application/x-servicecue-track-id");
+    const indexedTrack = findTrackById(libraryIndex, trackId);
+
+    if (!indexedTrack) {
+      setMessage("Could not add that track to the service order.");
+      return;
+    }
+
+    addTrackToSection(indexedTrack, sectionId);
+  }
+
   function removeScheduleItem(sectionId: string, itemId: string) {
     setSchedule((currentSchedule) => ({
       ...currentSchedule,
@@ -648,7 +680,12 @@ export function App() {
 
           <div className="mt-5 max-h-72 overflow-auto rounded-md border border-cue-line">
             {filteredTracks.slice(0, 20).map((indexedTrack) => (
-              <div key={indexedTrack.id} className="border-b border-cue-line px-3 py-2 last:border-b-0">
+              <div
+                key={indexedTrack.id}
+                className="cursor-grab border-b border-cue-line px-3 py-2 last:border-b-0 active:cursor-grabbing"
+                draggable
+                onDragStart={(event) => handleTrackDragStart(event, indexedTrack)}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold">{indexedTrack.displayTitle}</div>
@@ -748,7 +785,18 @@ export function App() {
           <div className="mt-5 space-y-3">
             {orderedSections
               .map((section) => (
-                <div key={section.id} className="rounded-md border border-cue-line p-3">
+                <div
+                  key={section.id}
+                  className={[
+                    "rounded-md border p-3 transition-colors",
+                    dragOverSectionId === section.id
+                      ? "border-cue-action bg-blue-50"
+                      : "border-cue-line",
+                  ].join(" ")}
+                  onDragLeave={() => setDragOverSectionId((current) => current === section.id ? null : current)}
+                  onDragOver={(event) => handleSectionDragOver(event, section.id)}
+                  onDrop={(event) => handleSectionDrop(event, section.id)}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold">{section.name}</div>
