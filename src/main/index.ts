@@ -461,6 +461,42 @@ app.whenReady().then(() => {
     return result.filePaths[0];
   });
 
+  ipcMain.handle("audio:pickReplacementFile", async () => {
+    const result = await dialog.showOpenDialog({
+      title: "Locate replacement audio file",
+      properties: ["openFile"],
+      filters: [
+        { name: "Audio files", extensions: ["mp3", "wav", "m4a"] },
+      ],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    const filePath = result.filePaths[0];
+    const fileName = basename(filePath);
+    let durationSeconds: number | undefined;
+
+    try {
+      const metadata = await parseFile(filePath, { duration: true });
+      durationSeconds = metadata.format.duration;
+    } catch {
+      durationSeconds = undefined;
+    }
+
+    return {
+      id: `guest_import:${filePath}`,
+      filePath,
+      fileName,
+      displayTitle: cleanDisplayTitle(fileName),
+      durationSeconds,
+      source: "guest_import" as const,
+    };
+  });
+
+  ipcMain.handle("audio:fileExists", async (_event, filePath: string) => existsSync(filePath));
+
   ipcMain.handle("audio:readFile", async (_event, filePath: string) => {
     const data = await readFile(filePath);
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);

@@ -93,6 +93,8 @@ const serviceCue = {
   importGuestSong: (request: GuestImportRequest) =>
     ipcRenderer.invoke("guest:import", request) as Promise<LibraryTrack>,
   pickAudioFile: () => ipcRenderer.invoke("audio:pickFile") as Promise<string | null>,
+  pickReplacementFile: () => ipcRenderer.invoke("audio:pickReplacementFile") as Promise<LibraryTrack | null>,
+  fileExists: (filePath: string) => ipcRenderer.invoke("audio:fileExists", filePath) as Promise<boolean>,
   readAudioFile: (filePath: string) =>
     ipcRenderer.invoke("audio:readFile", filePath) as Promise<ArrayBuffer>,
 };

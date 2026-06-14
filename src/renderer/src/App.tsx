@@ -264,6 +264,49 @@ export function App() {
     playerRef.current?.setVolume(volume / 100);
   }, [volume]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function validateScheduleFiles() {
+      const sections = await Promise.all(schedule.sections.map(async (section) => {
+        const items = await Promise.all(section.items.map(async (item) => {
+          const indexedTrack = findTrackById(libraryIndex, item.trackId);
+
+          if (!indexedTrack) {
+            return item.status === "missing" ? item : { ...item, status: "missing" as const };
+          }
+
+          const exists = await window.serviceCue.fileExists(indexedTrack.filePath);
+          const nextStatus: ScheduleItem["status"] = exists ? "ready" : "missing";
+          return item.status === nextStatus ? item : { ...item, status: nextStatus };
+        }));
+
+        return { ...section, items };
+      }));
+
+      if (cancelled) {
+        return;
+      }
+
+      const changed = sections.some((section, sectionIndex) =>
+        section.items.some((item, itemIndex) => item.status !== schedule.sections[sectionIndex]?.items[itemIndex]?.status),
+      );
+
+      if (changed) {
+        setSchedule((currentSchedule) => ({
+          ...currentSchedule,
+          sections,
+        }));
+      }
+    }
+
+    void validateScheduleFiles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [libraryIndex, schedule.sections]);
+
   async function refreshDevices(persistedDeviceId = selectedDeviceId) {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
@@ -739,12 +782,47 @@ export function App() {
   async function loadScheduleItem(item: ScheduleItem) {
     const indexedTrack = findTrackById(libraryIndex, item.trackId);
 
-    if (!indexedTrack) {
+    if (!indexedTrack || item.status === "missing") {
       setMessage("Missing file");
       return;
     }
 
     await loadTrackForPreview(indexedTrack);
+  }
+
+  async function locateScheduleItem(sectionId: string, itemId: string) {
+    const replacementTrack = await window.serviceCue.pickReplacementFile();
+
+    if (!replacementTrack) {
+      return;
+    }
+
+    setLibraryIndex((currentIndex) => ({
+      ...currentIndex,
+      tracks: [...currentIndex.tracks.filter((track) => track.id !== replacementTrack.id), replacementTrack],
+    }));
+    setSchedule((currentSchedule) => ({
+      ...currentSchedule,
+      updatedAt: new Date().toISOString(),
+      sections: currentSchedule.sections.map((section) => {
+        if (section.id !== sectionId) {
+          return section;
+        }
+
+        return {
+          ...section,
+          items: section.items.map((item) => item.id === itemId
+            ? {
+                ...item,
+                trackId: replacementTrack.id,
+                customTitle: item.customTitle ?? replacementTrack.displayTitle,
+                status: "ready" as const,
+              }
+            : item),
+        };
+      }),
+    }));
+    setMessage(`Located replacement file: ${replacementTrack.displayTitle}.`);
   }
 
   async function handlePlayPause() {
@@ -1098,13 +1176,18 @@ export function App() {
                         const indexedTrack = findTrackById(libraryIndex, item.trackId);
                         const title = item.customTitle ?? indexedTrack?.displayTitle ?? item.trackId;
                         const duration = indexedTrack?.durationSeconds;
+                        const isMissing = item.status === "missing" || !indexedTrack;
 
                         return (
                           <div
                             key={item.id}
                             className={[
                               `${isLiveMode ? "" : "cursor-grab active:cursor-grabbing"} rounded border bg-cue-panel px-3 py-2`,
-                              dragOverItemId === item.id ? "border-cue-action ring-2 ring-blue-100" : "border-cue-line",
+                              isMissing
+                                ? "border-amber-300 bg-amber-50"
+                                : dragOverItemId === item.id
+                                  ? "border-cue-action ring-2 ring-blue-100"
+                                  : "border-cue-line",
                             ].join(" ")}
                             draggable={!isLiveMode}
                             onDragEnd={() => {
@@ -1120,19 +1203,28 @@ export function App() {
                                 <div className="truncate text-sm font-medium">
                                   {index + 1}. {title}
                                 </div>
-                                <div className="text-xs text-cue-muted">
-                                  {indexedTrack ? formatTime(duration ?? 0) : "Missing file"}
+                                <div className={["text-xs", isMissing ? "font-semibold text-cue-warm" : "text-cue-muted"].join(" ")}>
+                                  {isMissing ? "Missing file" : formatTime(duration ?? 0)}
                                 </div>
                               </div>
                               <div className="flex shrink-0 gap-2">
                                 <button
                                   className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-45"
                                   type="button"
-                                  disabled={!indexedTrack}
+                                  disabled={isMissing}
                                   onClick={() => void loadScheduleItem(item)}
                                 >
                                   Load
                                 </button>
+                                {isMissing && !isLiveMode && (
+                                  <button
+                                    className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70"
+                                    type="button"
+                                    onClick={() => void locateScheduleItem(section.id, item.id)}
+                                  >
+                                    Locate
+                                  </button>
+                                )}
                                 {!isLiveMode && (
                                   <button
                                     className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70"
