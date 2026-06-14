@@ -13,10 +13,9 @@ export class ServiceCueAudioPlayer {
   private readonly output: MediaStreamAudioDestinationNode;
   private readonly sink: HTMLAudioElement;
   private readonly gain: GainNode;
-  private buffer?: AudioBuffer;
-  private source?: AudioBufferSourceNode;
-  private startedAt = 0;
-  private pausedAt = 0;
+  private readonly sourceElement: HTMLAudioElement;
+  private readonly source: MediaElementAudioSourceNode;
+  private objectUrl?: string;
   private volume = 1;
   private status: PlaybackStatus = "idle";
   private onEnded?: () => void;
@@ -27,8 +26,21 @@ export class ServiceCueAudioPlayer {
     this.sink = new Audio();
     this.sink.srcObject = this.output.stream;
     this.sink.autoplay = true;
+
+    this.sourceElement = new Audio();
+    this.sourceElement.preload = "auto";
+    this.sourceElement.crossOrigin = "anonymous";
+    this.sourceElement.addEventListener("ended", () => {
+      this.status = "stopped";
+      this.sourceElement.currentTime = 0;
+      this.restoreGain();
+      this.onEnded?.();
+    });
+
     this.gain = this.context.createGain();
     this.gain.gain.value = this.volume;
+    this.source = this.context.createMediaElementSource(this.sourceElement);
+    this.source.connect(this.gain);
     this.gain.connect(this.output);
   }
 
@@ -37,15 +49,11 @@ export class ServiceCueAudioPlayer {
   }
 
   get durationSeconds() {
-    return this.buffer?.duration ?? 0;
+    return Number.isFinite(this.sourceElement.duration) ? this.sourceElement.duration : 0;
   }
 
   get currentTimeSeconds() {
-    if (this.status === "playing" || this.status === "fading") {
-      return Math.min(this.context.currentTime - this.startedAt, this.durationSeconds);
-    }
-
-    return Math.min(this.pausedAt, this.durationSeconds);
+    return this.sourceElement.currentTime;
   }
 
   async setOutputDevice(deviceId: string) {
@@ -66,103 +74,116 @@ export class ServiceCueAudioPlayer {
   async load(filePath: string, data: ArrayBuffer, onEnded?: () => void): Promise<TrackInfo> {
     await this.stop();
     this.onEnded = onEnded;
-    this.buffer = await this.context.decodeAudioData(data.slice(0));
-    this.pausedAt = 0;
+    this.revokeObjectUrl();
+    this.objectUrl = URL.createObjectURL(new Blob([data]));
+    this.sourceElement.src = this.objectUrl;
+    this.sourceElement.load();
     this.status = "stopped";
+
+    await new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        this.sourceElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
+        this.sourceElement.removeEventListener("error", handleError);
+      };
+      const handleLoadedMetadata = () => {
+        cleanup();
+        resolve();
+      };
+      const handleError = () => {
+        cleanup();
+        reject(new Error("Could not play this file. Try checking the file or audio output."));
+      };
+
+      this.sourceElement.addEventListener("loadedmetadata", handleLoadedMetadata);
+      this.sourceElement.addEventListener("error", handleError);
+    });
 
     return {
       filePath,
       fileName: filePath.split(/[\\/]/).pop() ?? filePath,
-      durationSeconds: this.buffer.duration,
+      durationSeconds: this.durationSeconds,
     };
   }
 
   async play() {
-    if (!this.buffer) {
-      return;
-    }
-
-    if (this.status === "playing" || this.status === "fading") {
+    if (!this.sourceElement.src || this.status === "playing" || this.status === "fading") {
       return;
     }
 
     await this.context.resume();
     await this.sink.play();
-    this.startSource(this.pausedAt);
+    this.restoreGain();
+    await this.sourceElement.play();
     this.status = "playing";
   }
 
   async pause() {
-    if (this.status !== "playing" || !this.source) {
+    if (this.status !== "playing") {
       return;
     }
 
-    const now = this.context.currentTime;
-    this.pausedAt = this.currentTimeSeconds;
-    this.rampGainTo(0, STOP_FADE_SECONDS);
-    const source = this.source;
-
-    window.setTimeout(() => {
-      source.stop();
-      source.disconnect();
-      if (this.source === source) {
-        this.source = undefined;
-      }
-      this.status = "paused";
-      this.gain.gain.setValueAtTime(this.volume, this.context.currentTime);
-    }, STOP_FADE_SECONDS * 1000);
-  }
-
-  async stop() {
-    if (!this.source) {
-      this.pausedAt = 0;
-      this.status = "stopped";
-      return;
-    }
-
-    const source = this.source;
     this.rampGainTo(0, STOP_FADE_SECONDS);
 
     await new Promise<void>((resolve) => {
       window.setTimeout(() => {
-        source.stop();
-        source.disconnect();
-        if (this.source === source) {
-          this.source = undefined;
-        }
-        this.pausedAt = 0;
+        this.sourceElement.pause();
+        this.status = "paused";
+        this.restoreGain();
+        resolve();
+      }, STOP_FADE_SECONDS * 1000);
+    });
+  }
+
+  async stop() {
+    if (this.status !== "playing" && this.status !== "paused" && this.status !== "fading") {
+      this.sourceElement.currentTime = 0;
+      this.status = "stopped";
+      return;
+    }
+
+    if (this.status === "paused") {
+      this.sourceElement.currentTime = 0;
+      this.status = "stopped";
+      this.restoreGain();
+      return;
+    }
+
+    this.rampGainTo(0, STOP_FADE_SECONDS);
+
+    await new Promise<void>((resolve) => {
+      window.setTimeout(() => {
+        this.sourceElement.pause();
+        this.sourceElement.currentTime = 0;
         this.status = "stopped";
-        this.gain.gain.cancelScheduledValues(this.context.currentTime);
-        this.gain.gain.setValueAtTime(this.volume, this.context.currentTime);
+        this.restoreGain();
         resolve();
       }, STOP_FADE_SECONDS * 1000);
     });
   }
 
   async restart() {
+    if (!this.sourceElement.src) {
+      return;
+    }
+
     await this.stop();
+    this.sourceElement.currentTime = 0;
     await this.play();
   }
 
   async fadeOut(seconds = 5) {
-    if (!this.source || this.status !== "playing") {
+    if (this.status !== "playing") {
       return;
     }
 
     this.status = "fading";
-    const source = this.source;
     this.rampGainTo(0, seconds);
 
     window.setTimeout(() => {
-      source.stop();
-      source.disconnect();
-      if (this.source === source) {
-        this.source = undefined;
-      }
-      this.pausedAt = 0;
+      this.sourceElement.pause();
+      this.sourceElement.currentTime = 0;
       this.status = "stopped";
-      this.gain.gain.cancelScheduledValues(this.context.currentTime);
-      this.gain.gain.setValueAtTime(this.volume, this.context.currentTime);
+      this.restoreGain();
       this.onEnded?.();
     }, seconds * 1000);
   }
@@ -199,38 +220,14 @@ export class ServiceCueAudioPlayer {
       oscillator.onended = () => resolve();
     });
 
-    await sink.pause();
+    sink.pause();
     await testContext.close();
   }
 
-  private startSource(offsetSeconds: number) {
-    const buffer = this.buffer;
-
-    if (!buffer) {
-      return;
-    }
-
-    const source = this.context.createBufferSource();
-    source.buffer = buffer;
-    source.connect(this.gain);
-    source.onended = () => {
-      if (this.source !== source) {
-        return;
-      }
-
-      this.source = undefined;
-      if (this.status === "playing" || this.status === "fading") {
-        this.pausedAt = 0;
-        this.status = "stopped";
-        this.onEnded?.();
-      }
-    };
-
-    this.source = source;
-    this.startedAt = this.context.currentTime - offsetSeconds;
-    this.gain.gain.cancelScheduledValues(this.context.currentTime);
-    this.gain.gain.setValueAtTime(this.volume, this.context.currentTime);
-    source.start(0, offsetSeconds);
+  private restoreGain() {
+    const now = this.context.currentTime;
+    this.gain.gain.cancelScheduledValues(now);
+    this.gain.gain.setValueAtTime(this.volume, now);
   }
 
   private rampGainTo(value: number, seconds: number) {
@@ -238,5 +235,12 @@ export class ServiceCueAudioPlayer {
     this.gain.gain.cancelScheduledValues(now);
     this.gain.gain.setValueAtTime(this.gain.gain.value, now);
     this.gain.gain.linearRampToValueAtTime(value, now + seconds);
+  }
+
+  private revokeObjectUrl() {
+    if (this.objectUrl) {
+      URL.revokeObjectURL(this.objectUrl);
+      this.objectUrl = undefined;
+    }
   }
 }
