@@ -107,6 +107,7 @@ export function App() {
   const [scheduleFilePath, setScheduleFilePath] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => "");
   const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [folderFilter, setFolderFilter] = useState<FolderFilter>("All");
   const [devices, setDevices] = useState<DeviceOption[]>([]);
@@ -446,19 +447,44 @@ export function App() {
     event.dataTransfer.setData("text/plain", indexedTrack.displayTitle);
   }
 
+  function handleScheduleItemDragStart(
+    event: React.DragEvent<HTMLDivElement>,
+    sectionId: string,
+    itemId: string,
+  ) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-servicecue-schedule-item", JSON.stringify({ sectionId, itemId }));
+  }
+
   function handleSectionDragOver(event: React.DragEvent<HTMLDivElement>, sectionId: string) {
-    if (!event.dataTransfer.types.includes("application/x-servicecue-track-id")) {
+    if (
+      !event.dataTransfer.types.includes("application/x-servicecue-track-id") &&
+      !event.dataTransfer.types.includes("application/x-servicecue-schedule-item")
+    ) {
       return;
     }
 
     event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
+    event.dataTransfer.dropEffect = event.dataTransfer.types.includes("application/x-servicecue-schedule-item")
+      ? "move"
+      : "copy";
     setDragOverSectionId(sectionId);
   }
 
   function handleSectionDrop(event: React.DragEvent<HTMLDivElement>, sectionId: string) {
     event.preventDefault();
     setDragOverSectionId(null);
+    setDragOverItemId(null);
+
+    if (event.dataTransfer.types.includes("application/x-servicecue-schedule-item")) {
+      const draggedItem = parseDraggedScheduleItem(event);
+
+      if (draggedItem) {
+        moveScheduleItem(draggedItem.sectionId, draggedItem.itemId, sectionId);
+      }
+
+      return;
+    }
 
     const trackId = event.dataTransfer.getData("application/x-servicecue-track-id");
     const indexedTrack = findTrackById(libraryIndex, trackId);
@@ -469,6 +495,109 @@ export function App() {
     }
 
     addTrackToSection(indexedTrack, sectionId);
+  }
+
+  function handleScheduleItemDragOver(
+    event: React.DragEvent<HTMLDivElement>,
+    targetSectionId: string,
+    targetItemId: string,
+  ) {
+    if (!event.dataTransfer.types.includes("application/x-servicecue-schedule-item")) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "move";
+    setDragOverItemId(targetItemId);
+    setDragOverSectionId(targetSectionId);
+  }
+
+  function handleScheduleItemDrop(
+    event: React.DragEvent<HTMLDivElement>,
+    targetSectionId: string,
+    targetItemId: string,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverItemId(null);
+    setDragOverSectionId(null);
+
+    const draggedItem = parseDraggedScheduleItem(event);
+
+    if (!draggedItem) {
+      return;
+    }
+
+    moveScheduleItem(draggedItem.sectionId, draggedItem.itemId, targetSectionId, targetItemId);
+  }
+
+  function parseDraggedScheduleItem(event: React.DragEvent) {
+    try {
+      const raw = event.dataTransfer.getData("application/x-servicecue-schedule-item");
+
+      if (!raw) {
+        return null;
+      }
+
+      return JSON.parse(raw) as { sectionId: string; itemId: string };
+    } catch {
+      return null;
+    }
+  }
+
+  function moveScheduleItem(
+    fromSectionId: string,
+    itemId: string,
+    toSectionId: string,
+    beforeItemId?: string,
+  ) {
+    setSchedule((currentSchedule) => {
+      const fromSection = currentSchedule.sections.find((section) => section.id === fromSectionId);
+      const movingItem = fromSection?.items.find((item) => item.id === itemId);
+
+      if (!movingItem) {
+        return currentSchedule;
+      }
+
+      const sectionsWithoutMovingItem = currentSchedule.sections.map((section) => ({
+        ...section,
+        items: section.id === fromSectionId
+          ? section.items.filter((item) => item.id !== itemId)
+          : section.items,
+      }));
+
+      return {
+        ...currentSchedule,
+        updatedAt: new Date().toISOString(),
+        sections: sectionsWithoutMovingItem.map((section) => {
+          if (section.id !== toSectionId) {
+            return {
+              ...section,
+              items: section.items.map((item, index) => ({ ...item, sortOrder: index })),
+            };
+          }
+
+          const targetItems = section.items.slice().sort((a, b) => a.sortOrder - b.sortOrder);
+          const insertionIndex = beforeItemId
+            ? Math.max(0, targetItems.findIndex((item) => item.id === beforeItemId))
+            : targetItems.length;
+          const normalizedInsertionIndex = insertionIndex === -1 ? targetItems.length : insertionIndex;
+          const nextItems = [
+            ...targetItems.slice(0, normalizedInsertionIndex),
+            movingItem,
+            ...targetItems.slice(normalizedInsertionIndex),
+          ].map((item, index) => ({ ...item, sortOrder: index }));
+
+          return {
+            ...section,
+            items: nextItems,
+          };
+        }),
+      };
+    });
+    setSelectedSectionId(toSectionId);
+    setMessage("Reordered the service order.");
   }
 
   function removeScheduleItem(sectionId: string, itemId: string) {
@@ -816,7 +945,21 @@ export function App() {
                         const duration = indexedTrack?.durationSeconds;
 
                         return (
-                          <div key={item.id} className="rounded border border-cue-line bg-cue-panel px-3 py-2">
+                          <div
+                            key={item.id}
+                            className={[
+                              "cursor-grab rounded border bg-cue-panel px-3 py-2 active:cursor-grabbing",
+                              dragOverItemId === item.id ? "border-cue-action ring-2 ring-blue-100" : "border-cue-line",
+                            ].join(" ")}
+                            draggable
+                            onDragEnd={() => {
+                              setDragOverItemId(null);
+                              setDragOverSectionId(null);
+                            }}
+                            onDragOver={(event) => handleScheduleItemDragOver(event, section.id, item.id)}
+                            onDragStart={(event) => handleScheduleItemDragStart(event, section.id, item.id)}
+                            onDrop={(event) => handleScheduleItemDrop(event, section.id, item.id)}
+                          >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
                                 <div className="truncate text-sm font-medium">
