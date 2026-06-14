@@ -95,7 +95,36 @@ function createDefaultSchedule(): ServiceSchedule {
 }
 
 function findTrackById(libraryIndex: LibraryIndex, trackId: string) {
-  return libraryIndex.tracks.find((indexedTrack) => indexedTrack.id === trackId);
+  const indexedTrack = libraryIndex.tracks.find((track) => track.id === trackId);
+
+  if (indexedTrack) {
+    return indexedTrack;
+  }
+
+  if (trackId.startsWith("guest_import:")) {
+    const filePath = trackId.replace(/^guest_import:/, "");
+    const fileName = filePath.split(/[\\/]/).pop() ?? filePath;
+
+    return {
+      id: trackId,
+      filePath,
+      fileName,
+      displayTitle: fileName.replace(/\.[^.]+$/, ""),
+      source: "guest_import" as const,
+    };
+  }
+
+  return undefined;
+}
+
+function titleFromFilePath(filePath: string) {
+  const fileName = filePath.split(/[\\/]/).pop() ?? filePath;
+  return fileName.replace(/\.[^.]+$/, "").split(" - ")[0]?.trim() || fileName.replace(/\.[^.]+$/, "");
+}
+
+function filePathFromDrop(event: React.DragEvent) {
+  const file = event.dataTransfer.files[0] as (File & { path?: string }) | undefined;
+  return file?.path;
 }
 
 export function App() {
@@ -108,6 +137,12 @@ export function App() {
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => "");
   const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+  const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
+  const [guestSourceFilePath, setGuestSourceFilePath] = useState("");
+  const [guestSectionId, setGuestSectionId] = useState("");
+  const [guestName, setGuestName] = useState("");
+  const [guestSongTitle, setGuestSongTitle] = useState("");
+  const [isImportingGuest, setIsImportingGuest] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [folderFilter, setFolderFilter] = useState<FolderFilter>("All");
   const [devices, setDevices] = useState<DeviceOption[]>([]);
@@ -148,6 +183,7 @@ export function App() {
     [schedule.sections],
   );
   const activeSectionId = selectedSectionId || orderedSections[0]?.id || "";
+  const activeGuestSectionId = guestSectionId || orderedSections.find((section) => section.type === "Guest")?.id || activeSectionId;
 
   useEffect(() => {
     if (!activeSectionId && orderedSections[0]) {
@@ -406,7 +442,7 @@ export function App() {
     }
   }
 
-  function addTrackToSection(indexedTrack: LibraryTrack, sectionId = activeSectionId) {
+  function addTrackToSection(indexedTrack: LibraryTrack, sectionId = activeSectionId, customTitle?: string) {
     if (!sectionId) {
       setMessage("Add a section before adding tracks.");
       return;
@@ -426,6 +462,7 @@ export function App() {
           const nextItem: ScheduleItem = {
             id: crypto.randomUUID(),
             trackId: indexedTrack.id,
+            customTitle,
             sortOrder: section.items.length,
             status: "ready",
           };
@@ -439,6 +476,83 @@ export function App() {
     });
     setSelectedSectionId(sectionId);
     setMessage(`Added ${indexedTrack.displayTitle} to the service order.`);
+  }
+
+  function openGuestModal() {
+    const defaultSectionId = orderedSections.find((section) => section.type === "Guest")?.id ?? orderedSections[0]?.id ?? "";
+    setGuestSectionId(defaultSectionId);
+    setGuestSourceFilePath("");
+    setGuestName("");
+    setGuestSongTitle("");
+    setIsGuestModalOpen(true);
+  }
+
+  async function handlePickGuestFile() {
+    const filePath = await window.serviceCue.pickGuestFile();
+
+    if (!filePath) {
+      return;
+    }
+
+    setGuestSourceFilePath(filePath);
+    setGuestSongTitle((currentTitle) => currentTitle || titleFromFilePath(filePath));
+  }
+
+  function handleGuestDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const filePath = filePathFromDrop(event);
+
+    if (!filePath) {
+      setMessage("Could not read the dropped file path. Use Browse instead.");
+      return;
+    }
+
+    setGuestSourceFilePath(filePath);
+    setGuestSongTitle((currentTitle) => currentTitle || titleFromFilePath(filePath));
+  }
+
+  async function handleImportGuestSong() {
+    if (!guestSourceFilePath) {
+      setMessage("Choose a guest audio file first.");
+      return;
+    }
+
+    if (!activeGuestSectionId) {
+      setMessage("Choose a section for the guest song.");
+      return;
+    }
+
+    const section = orderedSections.find((candidate) => candidate.id === activeGuestSectionId);
+
+    if (!section) {
+      setMessage("Choose a valid section for the guest song.");
+      return;
+    }
+
+    setIsImportingGuest(true);
+
+    try {
+      const importedTrack = await window.serviceCue.importGuestSong({
+        sourceFilePath: guestSourceFilePath,
+        scheduleName: schedule.name,
+        scheduleDate: schedule.date,
+        sectionName: section.name,
+        guestName,
+        songTitle: guestSongTitle || titleFromFilePath(guestSourceFilePath),
+      });
+
+      setLibraryIndex((currentIndex) => ({
+        ...currentIndex,
+        tracks: [...currentIndex.tracks.filter((track) => track.id !== importedTrack.id), importedTrack],
+      }));
+      addTrackToSection(importedTrack, section.id, importedTrack.displayTitle);
+      setIsGuestModalOpen(false);
+      setMessage(`Imported guest song ${importedTrack.displayTitle}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not import this guest song.");
+    } finally {
+      setIsImportingGuest(false);
+    }
   }
 
   function handleTrackDragStart(event: React.DragEvent<HTMLDivElement>, indexedTrack: LibraryTrack) {
@@ -685,7 +799,7 @@ export function App() {
             <p className="text-sm text-cue-muted">Local backing-track player for church services</p>
           </div>
           <div className="rounded border border-cue-line px-3 py-1.5 text-sm font-medium text-cue-muted">
-            Build steps 1-8
+            Build steps 1-9
           </div>
         </div>
       </header>
@@ -903,6 +1017,13 @@ export function App() {
               onClick={() => void handleLoadSchedule()}
             >
               Load
+            </button>
+            <button
+              className="rounded-md bg-cue-ok px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
+              type="button"
+              onClick={openGuestModal}
+            >
+              Add Guest Song
             </button>
           </div>
 
@@ -1156,6 +1277,100 @@ export function App() {
           </div>
         </div>
       </section>
+
+      {isGuestModalOpen && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/35 px-4">
+          <div className="w-full max-w-lg rounded-lg border border-cue-line bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Add Guest Song</h2>
+                <p className="mt-1 text-sm text-cue-muted">
+                  The file will be copied into this service&apos;s Incoming folder.
+                </p>
+              </div>
+              <button
+                className="rounded-md border border-cue-line px-3 py-1.5 text-sm font-semibold hover:bg-cue-panel"
+                type="button"
+                onClick={() => setIsGuestModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div
+              className="mt-5 rounded-md border border-dashed border-cue-line bg-cue-panel px-4 py-6 text-center"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleGuestDrop}
+            >
+              <div className="text-sm font-semibold">Drop MP3, WAV, or M4A here</div>
+              <div className="mt-1 break-all text-xs text-cue-muted">
+                {guestSourceFilePath || "or browse for a guest file"}
+              </div>
+              <button
+                className="mt-4 rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
+                type="button"
+                onClick={() => void handlePickGuestFile()}
+              >
+                Browse
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4">
+              <label className="block text-sm font-medium">
+                Section
+                <select
+                  className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
+                  value={activeGuestSectionId}
+                  onChange={(event) => setGuestSectionId(event.target.value)}
+                >
+                  {orderedSections.map((section) => (
+                    <option key={section.id} value={section.id}>
+                      {section.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-sm font-medium">
+                Guest or group name
+                <input
+                  className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                  placeholder="Optional"
+                  value={guestName}
+                  onChange={(event) => setGuestName(event.target.value)}
+                />
+              </label>
+
+              <label className="block text-sm font-medium">
+                Song title
+                <input
+                  className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                  value={guestSongTitle}
+                  onChange={(event) => setGuestSongTitle(event.target.value)}
+                />
+              </label>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
+                type="button"
+                onClick={() => setIsGuestModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
+                type="button"
+                disabled={isImportingGuest || !guestSourceFilePath}
+                onClick={() => void handleImportGuestSong()}
+              >
+                Add to Service
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { basename, dirname, extname, join, relative } from "node:path";
-import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, readdir, readFile, mkdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { is } from "@electron-toolkit/utils";
 import { parseFile } from "music-metadata";
@@ -21,7 +21,7 @@ type LibraryTrack = {
   displayTitle: string;
   durationSeconds?: number;
   folderType?: "Romanian" | "English" | "Instrumental" | "Seasonal" | "Special";
-  source: "library";
+  source: "library" | "guest_import";
 };
 
 type LibraryIndex = {
@@ -58,6 +58,15 @@ type ServiceSchedule = {
   updatedAt: string;
 };
 
+type GuestImportRequest = {
+  sourceFilePath: string;
+  scheduleName: string;
+  scheduleDate: string;
+  sectionName: string;
+  guestName?: string;
+  songTitle: string;
+};
+
 const defaultSettings: AppSettings = {
   masterFolderPath: "",
   outputDeviceId: "default",
@@ -86,6 +95,10 @@ function getChurchMediaRoot(masterFolderPath: string) {
 
 function getSchedulesDirectory(settings: AppSettings) {
   return join(getChurchMediaRoot(settings.masterFolderPath), "Service Files", "Schedules");
+}
+
+function getIncomingDirectory(settings: AppSettings) {
+  return join(getChurchMediaRoot(settings.masterFolderPath), "Service Files", "Incoming");
 }
 
 async function readSettings(): Promise<AppSettings> {
@@ -153,6 +166,25 @@ function idForTrack(masterFolderPath: string, filePath: string) {
 function safeScheduleFileName(schedule: ServiceSchedule) {
   const baseName = `${schedule.date} ${schedule.name}`.trim() || "Service Schedule";
   return `${baseName.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/\s+/g, " ").trim()}.json`;
+}
+
+function safePathPart(value: string, fallback: string) {
+  const cleaned = value.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/\s+/g, " ").trim();
+  return cleaned || fallback;
+}
+
+async function nextAvailablePath(directoryPath: string, fileName: string) {
+  const extension = extname(fileName);
+  const stem = basename(fileName, extension);
+  let candidate = join(directoryPath, fileName);
+  let counter = 2;
+
+  while (existsSync(candidate)) {
+    candidate = join(directoryPath, `${stem} (${counter})${extension}`);
+    counter += 1;
+  }
+
+  return candidate;
 }
 
 async function collectAudioFiles(directoryPath: string): Promise<string[]> {
@@ -346,6 +378,71 @@ app.whenReady().then(() => {
     const filePath = result.filePaths[0];
     const raw = await readFile(filePath, "utf-8");
     return { schedule: JSON.parse(raw) as ServiceSchedule, filePath };
+  });
+
+  ipcMain.handle("guest:pickFile", async () => {
+    const result = await dialog.showOpenDialog({
+      title: "Choose guest audio file",
+      properties: ["openFile"],
+      filters: [
+        { name: "Audio files", extensions: ["mp3", "wav", "m4a"] },
+      ],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return result.filePaths[0];
+  });
+
+  ipcMain.handle("guest:import", async (_event, request: GuestImportRequest) => {
+    const settings = await readSettings();
+
+    if (!settings.masterFolderPath) {
+      throw new Error("Choose a master library folder before importing guest songs.");
+    }
+
+    const extension = extname(request.sourceFilePath).toLowerCase();
+
+    if (!supportedAudioExtensions.has(extension)) {
+      throw new Error("This file type is not supported. Please use MP3, WAV, or M4A.");
+    }
+
+    const serviceFolderName = safePathPart(`${request.scheduleDate} ${request.scheduleName}`, "Current Service");
+    const guestFolderName = safePathPart(
+      request.guestName ? `Guest - ${request.guestName}` : request.sectionName,
+      "Guest",
+    );
+    const destinationDirectory = join(getIncomingDirectory(settings), serviceFolderName, guestFolderName);
+    const originalFileName = basename(request.sourceFilePath);
+    const safeSongTitle = safePathPart(request.songTitle, cleanDisplayTitle(originalFileName));
+    const destinationStem = request.guestName
+      ? `${request.guestName} - ${safeSongTitle} - ${originalFileName}`
+      : `${safeSongTitle} - ${originalFileName}`;
+    const destinationFileName = safePathPart(destinationStem, originalFileName);
+
+    await mkdir(destinationDirectory, { recursive: true });
+    const destinationPath = await nextAvailablePath(destinationDirectory, destinationFileName);
+    await copyFile(request.sourceFilePath, destinationPath);
+
+    let durationSeconds: number | undefined;
+
+    try {
+      const metadata = await parseFile(destinationPath, { duration: true });
+      durationSeconds = metadata.format.duration;
+    } catch {
+      durationSeconds = undefined;
+    }
+
+    return {
+      id: `guest_import:${destinationPath}`,
+      filePath: destinationPath,
+      fileName: basename(destinationPath),
+      displayTitle: request.songTitle || cleanDisplayTitle(originalFileName),
+      durationSeconds,
+      source: "guest_import" as const,
+    };
   });
 
   ipcMain.handle("audio:pickFile", async () => {

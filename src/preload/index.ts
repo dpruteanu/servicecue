@@ -16,7 +16,7 @@ type LibraryTrack = {
   displayTitle: string;
   durationSeconds?: number;
   folderType?: "Romanian" | "English" | "Instrumental" | "Seasonal" | "Special";
-  source: "library";
+  source: "library" | "guest_import";
 };
 
 type LibraryIndex = {
@@ -69,6 +69,15 @@ type ScheduleLoadResult = {
   filePath: string;
 };
 
+type GuestImportRequest = {
+  sourceFilePath: string;
+  scheduleName: string;
+  scheduleDate: string;
+  sectionName: string;
+  guestName?: string;
+  songTitle: string;
+};
+
 const serviceCue = {
   readSettings: () => ipcRenderer.invoke("settings:read") as Promise<AppSettings>,
   updateSettings: (settings: Partial<AppSettings>) =>
@@ -80,6 +89,9 @@ const serviceCue = {
   saveSchedule: (schedule: ServiceSchedule) =>
     ipcRenderer.invoke("schedule:save", schedule) as Promise<ScheduleSaveResult>,
   loadSchedule: () => ipcRenderer.invoke("schedule:load") as Promise<ScheduleLoadResult | null>,
+  pickGuestFile: () => ipcRenderer.invoke("guest:pickFile") as Promise<string | null>,
+  importGuestSong: (request: GuestImportRequest) =>
+    ipcRenderer.invoke("guest:import", request) as Promise<LibraryTrack>,
   pickAudioFile: () => ipcRenderer.invoke("audio:pickFile") as Promise<string | null>,
   readAudioFile: (filePath: string) =>
     ipcRenderer.invoke("audio:readFile", filePath) as Promise<ArrayBuffer>,
