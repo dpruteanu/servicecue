@@ -1163,18 +1163,18 @@ export function App() {
 
       <section
         className={[
-          "mx-auto grid min-h-0 w-full max-w-[1680px] flex-1 gap-3 overflow-auto px-3 py-3 md:px-4 md:py-4 xl:overflow-hidden",
+          "mx-auto grid min-h-0 w-full max-w-[1680px] flex-1 gap-2 overflow-auto px-2 py-2 md:px-3 md:py-3 xl:overflow-hidden",
           isLiveMode ? "grid-cols-1" : "md:grid-cols-[minmax(260px,0.8fr)_minmax(390px,1.35fr)] 2xl:grid-cols-[minmax(320px,0.9fr)_minmax(500px,1.55fr)_minmax(290px,0.8fr)]",
         ].join(" ")}
       >
         {!isLiveMode && (
-          <aside className="flex min-h-[320px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm md:min-h-0 2xl:h-full">
+          <aside className="flex min-h-[320px] flex-col rounded-md border border-cue-line bg-white p-3 shadow-sm md:min-h-0 2xl:h-full 2xl:p-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">Library</h2>
+              <h2 className="text-base font-semibold 2xl:text-lg">Library</h2>
               <span className="text-xs font-semibold text-cue-muted">{libraryIndex.tracks.length} tracks</span>
             </div>
 
-            <div className="mt-4 flex items-center gap-2 rounded-md border border-cue-line bg-cue-panel px-3 py-2">
+            <div className="mt-3 hidden items-center gap-2 rounded-md border border-cue-line bg-cue-panel px-3 py-2 2xl:flex">
               <Folder className="size-4 shrink-0 text-cue-muted" aria-hidden="true" />
               <div className="min-w-0 flex-1 truncate text-sm text-cue-muted">
                 {settings?.masterFolderPath || "No folder selected"}
@@ -1190,7 +1190,7 @@ export function App() {
               </button>
             </div>
 
-            <div className="mt-3 flex items-center gap-2 rounded-md border border-cue-line bg-white px-3 py-2">
+            <div className="mt-2 flex items-center gap-2 rounded-md border border-cue-line bg-white px-3 py-2">
               <Search className="size-4 shrink-0 text-cue-muted" aria-hidden="true" />
               <input
                 className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
@@ -1201,12 +1201,12 @@ export function App() {
               />
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {libraryFilters.map((filter) => (
                 <button
                   key={filter}
                   className={[
-                    "rounded-md border px-3 py-1.5 text-sm font-semibold transition",
+                    "rounded-md border px-2.5 py-1 text-xs font-semibold transition 2xl:px-3 2xl:py-1.5 2xl:text-sm",
                     groupFilter === filter
                       ? "border-cue-action bg-cue-action text-white"
                       : "border-cue-line bg-white text-cue-ink hover:bg-cue-panel",
@@ -1219,7 +1219,7 @@ export function App() {
               ))}
             </div>
 
-            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_96px_64px] border-b border-cue-line px-3 pb-2 text-xs font-semibold uppercase text-cue-muted">
+            <div className="mt-3 grid grid-cols-[minmax(0,1fr)_82px_54px] border-b border-cue-line px-2 pb-1.5 text-[11px] font-semibold uppercase text-cue-muted 2xl:grid-cols-[minmax(0,1fr)_96px_64px] 2xl:px-3 2xl:pb-2 2xl:text-xs">
               <div>Title</div>
               <div>Group</div>
               <div className="text-right">Length</div>
@@ -1229,7 +1229,7 @@ export function App() {
               {filteredTracks.map((indexedTrack) => (
                 <div
                   key={indexedTrack.id}
-                  className="grid cursor-grab grid-cols-[minmax(0,1fr)_96px_64px] items-center gap-2 border-b border-cue-line px-3 py-2 text-sm hover:bg-blue-50 active:cursor-grabbing"
+                  className="grid cursor-grab grid-cols-[minmax(0,1fr)_82px_54px] items-center gap-2 border-b border-cue-line px-2 py-1.5 text-sm hover:bg-blue-50 active:cursor-grabbing 2xl:grid-cols-[minmax(0,1fr)_96px_64px] 2xl:px-3 2xl:py-2"
                   draggable
                   onDoubleClick={() => addTrackToSection(indexedTrack)}
                   onDragStart={(event) => handleTrackDragStart(event, indexedTrack)}
@@ -1264,14 +1264,14 @@ export function App() {
           </aside>
         )}
 
-        <section className="flex min-h-[360px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm md:min-h-0 2xl:h-full">
+        <section className="flex min-h-[360px] flex-col rounded-md border border-cue-line bg-white p-3 shadow-sm md:min-h-0 2xl:h-full 2xl:p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">{isLiveMode ? "Service Order" : "Today's Schedule"}</h2>
-              <p className="text-sm text-cue-muted">{schedule.name}</p>
+              <h2 className="text-base font-semibold 2xl:text-lg">{isLiveMode ? "Service Order" : "Today's Schedule"}</h2>
+              <p className="text-xs text-cue-muted 2xl:text-sm">{schedule.name}</p>
             </div>
             {!isLiveMode && (
-              <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="hidden flex-wrap items-center justify-end gap-2 2xl:flex">
                 <input
                   className="w-48 rounded-md border border-cue-line px-3 py-2 text-sm xl:w-56"
                   value={schedule.name}
@@ -1292,12 +1292,12 @@ export function App() {
             )}
           </div>
 
-          <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-auto pr-1">
+          <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1 2xl:mt-4 2xl:space-y-3">
             {orderedSections.map((section) => (
               <div
                 key={section.id}
                 className={[
-                  "rounded-md border bg-white p-3 transition-colors",
+                  "rounded-md border bg-white p-2 transition-colors 2xl:p-3",
                   dragOverSectionId === section.id
                     ? "border-cue-action bg-blue-50"
                     : "border-cue-line",
@@ -1306,7 +1306,7 @@ export function App() {
                 onDragOver={isLiveMode ? undefined : (event) => handleSectionDragOver(event, section.id)}
                 onDrop={isLiveMode ? undefined : (event) => handleSectionDrop(event, section.id)}
               >
-                <div className="flex items-center justify-between gap-3 border-b border-cue-line pb-3">
+                <div className="flex items-center justify-between gap-2 border-b border-cue-line pb-2 2xl:gap-3 2xl:pb-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="text-cue-action">{sectionIcon(section.type)}</div>
                     {editingSectionId === section.id ? (
@@ -1326,7 +1326,7 @@ export function App() {
                     )}
                   </div>
                   <div className="relative flex items-center gap-2">
-                    <span className="text-sm text-cue-muted">{section.items.length} {section.items.length === 1 ? "song" : "songs"}</span>
+                    <span className="text-xs text-cue-muted 2xl:text-sm">{section.items.length} {section.items.length === 1 ? "song" : "songs"}</span>
                     {!isLiveMode && (
                       <>
                         <button className={iconButtonClass()} type="button" title="Rename section" onClick={() => startEditingSection(section)}>
@@ -1375,7 +1375,7 @@ export function App() {
                         <div
                           key={item.id}
                           className={[
-                            "grid grid-cols-[28px_34px_minmax(0,1fr)_64px_44px] items-center gap-2 py-2 text-sm",
+                            "grid grid-cols-[20px_24px_minmax(0,1fr)_48px_36px] items-center gap-1.5 py-1.5 text-sm 2xl:grid-cols-[28px_34px_minmax(0,1fr)_64px_44px] 2xl:gap-2 2xl:py-2",
                             !isLiveMode ? "cursor-grab active:cursor-grabbing" : "",
                             isMissing ? "bg-amber-50 text-cue-warm" : "",
                             dragOverItemId === item.id ? "rounded-md bg-blue-50 ring-2 ring-blue-100" : "",
@@ -1431,7 +1431,7 @@ export function App() {
                       );
                     })}
                   {section.items.length === 0 && (
-                    <div className="rounded-md border border-dashed border-cue-line px-3 py-3 text-sm text-cue-muted">
+                    <div className="rounded-md border border-dashed border-cue-line px-3 py-2 text-sm text-cue-muted 2xl:py-3">
                       No songs in this section.
                     </div>
                   )}
@@ -1441,7 +1441,7 @@ export function App() {
           </div>
 
           {!isLiveMode && (
-            <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-cue-action px-4 py-2 text-sm font-semibold text-cue-action hover:bg-blue-50" type="button" onClick={addSection}>
+            <button className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-cue-action px-4 py-1.5 text-sm font-semibold text-cue-action hover:bg-blue-50 2xl:mt-4 2xl:py-2" type="button" onClick={addSection}>
               <Plus className="size-4" aria-hidden="true" />
               Add Section
             </button>
@@ -1626,7 +1626,7 @@ export function App() {
             </div>
           </div>
         </div>
-        <div className="mx-auto mt-2 max-w-[1600px] truncate rounded-md border border-cue-line bg-cue-panel px-3 py-2 text-sm text-cue-muted">
+        <div className="mx-auto mt-2 hidden max-w-[1600px] truncate rounded-md border border-cue-line bg-cue-panel px-3 py-2 text-sm text-cue-muted 2xl:block">
           Status: <span className="font-semibold text-cue-ink">{status}</span>. {message}
         </div>
       </footer>
