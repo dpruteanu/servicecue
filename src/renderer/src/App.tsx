@@ -10,6 +10,8 @@ type AppSettings = Awaited<ReturnType<typeof window.serviceCue.readSettings>>;
 type LibraryIndex = Awaited<ReturnType<typeof window.serviceCue.readLibraryIndex>>;
 type LibraryTrack = LibraryIndex["tracks"][number];
 type ServiceSchedule = Parameters<typeof window.serviceCue.saveSchedule>[0];
+type ScheduleSection = ServiceSchedule["sections"][number];
+type ScheduleItem = ScheduleSection["items"][number];
 type FolderFilter = "All" | "Romanian" | "English" | "Instrumental" | "Seasonal" | "Special";
 
 const folderFilters: FolderFilter[] = ["All", "Romanian", "English", "Instrumental", "Seasonal", "Special"];
@@ -92,6 +94,10 @@ function createDefaultSchedule(): ServiceSchedule {
   };
 }
 
+function findTrackById(libraryIndex: LibraryIndex, trackId: string) {
+  return libraryIndex.tracks.find((indexedTrack) => indexedTrack.id === trackId);
+}
+
 export function App() {
   const playerRef = useRef<ServiceCueAudioPlayer | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -99,6 +105,7 @@ export function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [schedule, setSchedule] = useState<ServiceSchedule>(() => createDefaultSchedule());
   const [scheduleFilePath, setScheduleFilePath] = useState<string | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => "");
   const [searchQuery, setSearchQuery] = useState("");
   const [folderFilter, setFolderFilter] = useState<FolderFilter>("All");
   const [devices, setDevices] = useState<DeviceOption[]>([]);
@@ -134,6 +141,22 @@ export function App() {
       return queryParts.every((part) => haystack.includes(part));
     });
   }, [folderFilter, libraryIndex.tracks, searchQuery]);
+  const orderedSections = useMemo(
+    () => schedule.sections.slice().sort((a, b) => a.sortOrder - b.sortOrder),
+    [schedule.sections],
+  );
+  const activeSectionId = selectedSectionId || orderedSections[0]?.id || "";
+
+  useEffect(() => {
+    if (!activeSectionId && orderedSections[0]) {
+      setSelectedSectionId(orderedSections[0].id);
+      return;
+    }
+
+    if (activeSectionId && !orderedSections.some((section) => section.id === activeSectionId)) {
+      setSelectedSectionId(orderedSections[0]?.id ?? "");
+    }
+  }, [activeSectionId, orderedSections]);
 
   useEffect(() => {
     playerRef.current = new ServiceCueAudioPlayer();
@@ -288,7 +311,9 @@ export function App() {
   }
 
   function handleNewSchedule() {
-    setSchedule(createDefaultSchedule());
+    const nextSchedule = createDefaultSchedule();
+    setSchedule(nextSchedule);
+    setSelectedSectionId(nextSchedule.sections[0]?.id ?? "");
     setScheduleFilePath(null);
     setMessage("Created a new empty service order.");
   }
@@ -326,6 +351,7 @@ export function App() {
 
       if (result) {
         setSchedule(result.schedule);
+        setSelectedSectionId(result.schedule.sections[0]?.id ?? "");
         setScheduleFilePath(result.filePath);
         setMessage(`Loaded schedule from ${result.filePath}.`);
       }
@@ -376,6 +402,72 @@ export function App() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load this library track.");
     }
+  }
+
+  function addTrackToSection(indexedTrack: LibraryTrack, sectionId = activeSectionId) {
+    if (!sectionId) {
+      setMessage("Add a section before adding tracks.");
+      return;
+    }
+
+    setSchedule((currentSchedule) => {
+      const now = new Date().toISOString();
+
+      return {
+        ...currentSchedule,
+        updatedAt: now,
+        sections: currentSchedule.sections.map((section) => {
+          if (section.id !== sectionId) {
+            return section;
+          }
+
+          const nextItem: ScheduleItem = {
+            id: crypto.randomUUID(),
+            trackId: indexedTrack.id,
+            sortOrder: section.items.length,
+            status: "ready",
+          };
+
+          return {
+            ...section,
+            items: [...section.items, nextItem],
+          };
+        }),
+      };
+    });
+    setSelectedSectionId(sectionId);
+    setMessage(`Added ${indexedTrack.displayTitle} to the service order.`);
+  }
+
+  function removeScheduleItem(sectionId: string, itemId: string) {
+    setSchedule((currentSchedule) => ({
+      ...currentSchedule,
+      updatedAt: new Date().toISOString(),
+      sections: currentSchedule.sections.map((section) => {
+        if (section.id !== sectionId) {
+          return section;
+        }
+
+        return {
+          ...section,
+          items: section.items
+            .filter((item) => item.id !== itemId)
+            .map((item, index) => ({ ...item, sortOrder: index })),
+        };
+      }),
+    }));
+    setMessage("Removed track from the service order.");
+  }
+
+  async function loadScheduleItem(item: ScheduleItem) {
+    const indexedTrack = findTrackById(libraryIndex, item.trackId);
+
+    if (!indexedTrack) {
+      setMessage("Missing file");
+      return;
+    }
+
+    await loadTrackForPreview(indexedTrack);
   }
 
   async function handlePlayPause() {
@@ -432,7 +524,7 @@ export function App() {
             <p className="text-sm text-cue-muted">Local backing-track player for church services</p>
           </div>
           <div className="rounded border border-cue-line px-3 py-1.5 text-sm font-medium text-cue-muted">
-            Build steps 1-7
+            Build steps 1-8
           </div>
         </div>
       </header>
@@ -475,6 +567,22 @@ export function App() {
             <div>Search results: <span className="font-semibold text-cue-ink">{filteredTracks.length}</span></div>
             <div>Last scanned: <span className="font-semibold text-cue-ink">{formatScanTime(settings?.lastScannedAt ?? libraryIndex.scannedAt)}</span></div>
           </div>
+
+          <label className="mt-4 block text-sm font-medium" htmlFor="target-section">
+            Add search results to
+          </label>
+          <select
+            id="target-section"
+            className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
+            value={activeSectionId}
+            onChange={(event) => setSelectedSectionId(event.target.value)}
+          >
+            {orderedSections.map((section) => (
+              <option key={section.id} value={section.id}>
+                {section.name}
+              </option>
+            ))}
+          </select>
 
           <div className="mt-5 border-t border-cue-line pt-4">
             <label className="block text-sm font-medium" htmlFor="library-search">
@@ -548,13 +656,22 @@ export function App() {
                       {indexedTrack.folderType ?? "Audio"} · {formatTime(indexedTrack.durationSeconds ?? 0)}
                     </div>
                   </div>
-                  <button
-                    className="shrink-0 rounded-md border border-cue-line px-2.5 py-1 text-xs font-semibold hover:bg-cue-panel"
-                    type="button"
-                    onClick={() => void loadTrackForPreview(indexedTrack)}
-                  >
-                    Preview
-                  </button>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      className="rounded-md border border-cue-line px-2.5 py-1 text-xs font-semibold hover:bg-cue-panel"
+                      type="button"
+                      onClick={() => void loadTrackForPreview(indexedTrack)}
+                    >
+                      Preview
+                    </button>
+                    <button
+                      className="rounded-md bg-cue-action px-2.5 py-1 text-xs font-semibold text-white hover:bg-cue-actionDark"
+                      type="button"
+                      onClick={() => addTrackToSection(indexedTrack)}
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -629,9 +746,7 @@ export function App() {
           </div>
 
           <div className="mt-5 space-y-3">
-            {schedule.sections
-              .slice()
-              .sort((a, b) => a.sortOrder - b.sortOrder)
+            {orderedSections
               .map((section) => (
                 <div key={section.id} className="rounded-md border border-cue-line p-3">
                   <div className="flex items-center justify-between gap-3">
@@ -642,6 +757,53 @@ export function App() {
                     <div className="rounded border border-cue-line px-2 py-1 text-xs font-semibold text-cue-muted">
                       {section.items.length} songs
                     </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {section.items
+                      .slice()
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((item, index) => {
+                        const indexedTrack = findTrackById(libraryIndex, item.trackId);
+                        const title = item.customTitle ?? indexedTrack?.displayTitle ?? item.trackId;
+                        const duration = indexedTrack?.durationSeconds;
+
+                        return (
+                          <div key={item.id} className="rounded border border-cue-line bg-cue-panel px-3 py-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-medium">
+                                  {index + 1}. {title}
+                                </div>
+                                <div className="text-xs text-cue-muted">
+                                  {indexedTrack ? formatTime(duration ?? 0) : "Missing file"}
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 gap-2">
+                                <button
+                                  className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-45"
+                                  type="button"
+                                  disabled={!indexedTrack}
+                                  onClick={() => void loadScheduleItem(item)}
+                                >
+                                  Load
+                                </button>
+                                <button
+                                  className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70"
+                                  type="button"
+                                  onClick={() => removeScheduleItem(section.id, item.id)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {section.items.length === 0 && (
+                      <div className="rounded border border-dashed border-cue-line px-3 py-2 text-sm text-cue-muted">
+                        No songs in this section.
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
