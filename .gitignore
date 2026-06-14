@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+dist-electron/
+release/
+out/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Env
+.env
+.env.local
+
+# ServiceCue runtime data (never commit real church media or local app data)
+*.mp3
+*.wav
+*.m4a
+/Church Media/
+library-index.json
+metadata-overrides.json
+settings.json
+
+# Allow demo audio if explicitly added under assets/demo
+!assets/demo/*.wav
