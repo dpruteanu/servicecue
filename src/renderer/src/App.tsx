@@ -8,6 +8,10 @@ type DeviceOption = {
 
 type AppSettings = Awaited<ReturnType<typeof window.serviceCue.readSettings>>;
 type LibraryIndex = Awaited<ReturnType<typeof window.serviceCue.readLibraryIndex>>;
+type LibraryTrack = LibraryIndex["tracks"][number];
+type FolderFilter = "All" | "Romanian" | "English" | "Instrumental" | "Seasonal" | "Special";
+
+const folderFilters: FolderFilter[] = ["All", "Romanian", "English", "Instrumental", "Seasonal", "Special"];
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds <= 0) {
@@ -18,6 +22,23 @@ function formatTime(seconds: number) {
   const minutes = Math.floor(rounded / 60);
   const remainingSeconds = String(rounded % 60).padStart(2, "0");
   return `${minutes}:${remainingSeconds}`;
+}
+
+function normalizeSearch(input: string) {
+  return input
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
+function searchableText(track: LibraryTrack) {
+  return normalizeSearch([
+    track.displayTitle,
+    track.fileName,
+    track.folderType,
+    track.id,
+  ].filter(Boolean).join(" "));
 }
 
 function outputLabel(device: MediaDeviceInfo, index: number) {
@@ -44,6 +65,8 @@ export function App() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [libraryIndex, setLibraryIndex] = useState<LibraryIndex>({ tracks: [] });
   const [isScanning, setIsScanning] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [folderFilter, setFolderFilter] = useState<FolderFilter>("All");
   const [devices, setDevices] = useState<DeviceOption[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("default");
   const [missingSelectedDevice, setMissingSelectedDevice] = useState(false);
@@ -60,6 +83,23 @@ export function App() {
 
     return Math.min(100, (currentTime / track.durationSeconds) * 100);
   }, [currentTime, track?.durationSeconds]);
+  const filteredTracks = useMemo(() => {
+    const normalizedQuery = normalizeSearch(searchQuery);
+    const queryParts = normalizedQuery.split(/\s+/).filter(Boolean);
+
+    return libraryIndex.tracks.filter((indexedTrack) => {
+      if (folderFilter !== "All" && indexedTrack.folderType !== folderFilter) {
+        return false;
+      }
+
+      if (queryParts.length === 0) {
+        return true;
+      }
+
+      const haystack = searchableText(indexedTrack);
+      return queryParts.every((part) => haystack.includes(part));
+    });
+  }, [folderFilter, libraryIndex.tracks, searchQuery]);
 
   useEffect(() => {
     playerRef.current = new ServiceCueAudioPlayer();
@@ -238,6 +278,25 @@ export function App() {
     }
   }
 
+  async function loadTrackForPreview(indexedTrack: LibraryTrack) {
+    try {
+      const data = await window.serviceCue.readAudioFile(indexedTrack.filePath);
+      const loadedTrack = await playerRef.current?.load(indexedTrack.filePath, data, () => {
+        setStatus("stopped");
+        setCurrentTime(0);
+      });
+
+      if (loadedTrack) {
+        setTrack(loadedTrack);
+        setCurrentTime(0);
+        setStatus("stopped");
+        setMessage(`Loaded ${indexedTrack.displayTitle} from the library.`);
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not load this library track.");
+    }
+  }
+
   async function handlePlayPause() {
     if (!playerRef.current || !track) {
       return;
@@ -292,7 +351,7 @@ export function App() {
             <p className="text-sm text-cue-muted">Local backing-track player for church services</p>
           </div>
           <div className="rounded border border-cue-line px-3 py-1.5 text-sm font-medium text-cue-muted">
-            Build steps 1-5
+            Build steps 1-6
           </div>
         </div>
       </header>
@@ -332,7 +391,40 @@ export function App() {
 
           <div className="mt-4 text-sm text-cue-muted">
             <div>Tracks indexed: <span className="font-semibold text-cue-ink">{libraryIndex.tracks.length}</span></div>
+            <div>Search results: <span className="font-semibold text-cue-ink">{filteredTracks.length}</span></div>
             <div>Last scanned: <span className="font-semibold text-cue-ink">{formatScanTime(settings?.lastScannedAt ?? libraryIndex.scannedAt)}</span></div>
+          </div>
+
+          <div className="mt-5 border-t border-cue-line pt-4">
+            <label className="block text-sm font-medium" htmlFor="library-search">
+              Search library
+            </label>
+            <input
+              id="library-search"
+              className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+              placeholder="Title, filename, folder trait"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {folderFilters.map((filter) => (
+                <button
+                  key={filter}
+                  className={[
+                    "rounded-md border px-3 py-2 text-sm font-semibold",
+                    folderFilter === filter
+                      ? "border-cue-action bg-blue-50 text-cue-action"
+                      : "border-cue-line hover:bg-cue-panel",
+                  ].join(" ")}
+                  type="button"
+                  onClick={() => setFolderFilter(filter)}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mt-5 space-y-3 border-t border-cue-line pt-4 text-sm">
@@ -365,17 +457,36 @@ export function App() {
             </label>
           </div>
 
-          <div className="mt-5 max-h-52 overflow-auto rounded-md border border-cue-line">
-            {libraryIndex.tracks.slice(0, 8).map((indexedTrack) => (
+          <div className="mt-5 max-h-72 overflow-auto rounded-md border border-cue-line">
+            {filteredTracks.slice(0, 20).map((indexedTrack) => (
               <div key={indexedTrack.id} className="border-b border-cue-line px-3 py-2 last:border-b-0">
-                <div className="truncate text-sm font-semibold">{indexedTrack.displayTitle}</div>
-                <div className="truncate text-xs text-cue-muted">
-                  {indexedTrack.folderType ?? "Audio"} · {formatTime(indexedTrack.durationSeconds ?? 0)}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold">{indexedTrack.displayTitle}</div>
+                    <div className="truncate text-xs text-cue-muted">
+                      {indexedTrack.folderType ?? "Audio"} · {formatTime(indexedTrack.durationSeconds ?? 0)}
+                    </div>
+                  </div>
+                  <button
+                    className="shrink-0 rounded-md border border-cue-line px-2.5 py-1 text-xs font-semibold hover:bg-cue-panel"
+                    type="button"
+                    onClick={() => void loadTrackForPreview(indexedTrack)}
+                  >
+                    Preview
+                  </button>
                 </div>
               </div>
             ))}
+            {filteredTracks.length > 20 && (
+              <div className="px-3 py-2 text-xs text-cue-muted">
+                Showing first 20 matches. Narrow the search to find more.
+              </div>
+            )}
             {libraryIndex.tracks.length === 0 && (
               <div className="px-3 py-6 text-sm text-cue-muted">No indexed tracks yet.</div>
+            )}
+            {libraryIndex.tracks.length > 0 && filteredTracks.length === 0 && (
+              <div className="px-3 py-6 text-sm text-cue-muted">No tracks match this search.</div>
             )}
           </div>
         </div>
