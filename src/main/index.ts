@@ -5,6 +5,8 @@ import { existsSync } from "node:fs";
 import { is } from "@electron-toolkit/utils";
 import { parseFile } from "music-metadata";
 
+app.setName("ServiceCue");
+
 type AppSettings = {
   masterFolderPath: string;
   outputDeviceId: string;

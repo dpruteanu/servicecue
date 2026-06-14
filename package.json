@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "tsc --noEmit && electron-vite build",
-    "package:win": "pnpm build && electron-builder --win portable",
+    "package:win": "pnpm build && electron-builder --win portable --x64",
+    "package:win:arm64": "pnpm build && electron-builder --win portable --arm64",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
