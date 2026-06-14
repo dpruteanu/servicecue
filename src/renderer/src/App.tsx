@@ -833,7 +833,7 @@ export function App() {
       <section
         className={[
           "mx-auto grid max-w-7xl gap-6 px-6 py-6",
-          isLiveMode ? "xl:grid-cols-[minmax(420px,1fr)_480px]" : "xl:grid-cols-[360px_minmax(360px,1fr)_360px]",
+          isLiveMode ? "xl:grid-cols-[minmax(520px,1fr)_560px]" : "xl:grid-cols-[360px_minmax(360px,1fr)_360px]",
         ].join(" ")}
       >
         <div className={["rounded-lg border border-cue-line bg-white p-5 shadow-sm", isLiveMode ? "hidden" : ""].join(" ")}>
@@ -1233,7 +1233,7 @@ export function App() {
         </div>
 
         <div className={["rounded-lg border border-cue-line bg-white p-5 shadow-sm", isLiveMode ? "" : "xl:col-span-3"].join(" ")}>
-          <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+          <div className={["grid gap-6", isLiveMode ? "grid-cols-1" : "xl:grid-cols-[360px_1fr]"].join(" ")}>
             <div>
               <h2 className="text-lg font-semibold">Output</h2>
               <p className="mt-1 text-sm text-cue-muted">
@@ -1309,7 +1309,7 @@ export function App() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <div className={["mt-5 grid gap-3", isLiveMode ? "grid-cols-2" : "sm:grid-cols-4"].join(" ")}>
             <button
               className="rounded-md bg-cue-action px-4 py-3 text-sm font-semibold text-white hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
               type="button"
@@ -1344,7 +1344,7 @@ export function App() {
             </button>
           </div>
 
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <div className={["mt-5 grid gap-5", isLiveMode ? "grid-cols-1" : "sm:grid-cols-2"].join(" ")}>
             <label className="block text-sm font-medium">
               Fade duration
               <select
