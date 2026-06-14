@@ -218,6 +218,7 @@ export function App() {
   const [schedules, setSchedules] = useState<ScheduleListItem[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isGuestImportOpen, setIsGuestImportOpen] = useState(false);
   const [mode, setMode] = useState<"setup" | "live">("setup");
   const [schedule, setSchedule] = useState<ServiceSchedule>(() => createDefaultSchedule());
   const [scheduleFilePath, setScheduleFilePath] = useState<string | null>(null);
@@ -1140,6 +1141,10 @@ export function App() {
                   <Folder className="size-4" aria-hidden="true" />
                   Load
                 </button>
+                <button className={buttonClass("secondary") + " 2xl:hidden"} type="button" onClick={() => setIsGuestImportOpen(true)}>
+                  <Upload className="size-4" aria-hidden="true" />
+                  Import Guest
+                </button>
                 <button className={buttonClass("secondary")} type="button" onClick={() => setIsSettingsOpen(true)}>
                   <Settings className="size-4" aria-hidden="true" />
                   Settings
@@ -1444,7 +1449,7 @@ export function App() {
         </section>
 
         {!isLiveMode && (
-          <aside className="flex min-h-0 flex-col rounded-md border border-cue-line bg-white p-3 shadow-sm md:col-span-2 2xl:col-span-1 2xl:h-full 2xl:min-h-[320px] 2xl:p-5">
+          <aside className="hidden min-h-[320px] flex-col rounded-md border border-cue-line bg-white p-5 shadow-sm 2xl:flex 2xl:h-full">
             <h2 className="text-lg font-semibold">Import Guest File</h2>
 
             <div
@@ -1625,6 +1630,88 @@ export function App() {
           Status: <span className="font-semibold text-cue-ink">{status}</span>. {message}
         </div>
       </footer>
+
+      {isGuestImportOpen && !isLiveMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-cue-line bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-cue-line px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold">Import Guest File</h2>
+                <p className="text-sm text-cue-muted">Drop or browse, then add it to the current service.</p>
+              </div>
+              <button className={iconButtonClass()} type="button" title="Close guest import" onClick={() => setIsGuestImportOpen(false)}>
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <div
+                className="flex min-h-36 flex-col items-center justify-center rounded-md border border-dashed border-cue-line bg-cue-panel px-6 py-6 text-center"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={handleGuestDrop}
+              >
+                <FileAudio className="size-10 text-cue-muted" aria-hidden="true" />
+                <div className="mt-3 text-base font-semibold">{guestSourceFilePath ? titleFromFilePath(guestSourceFilePath) : "Drop MP3 here"}</div>
+                <button className="mt-1 text-sm font-semibold text-cue-action hover:underline" type="button" onClick={() => void handlePickGuestFile()}>
+                  or browse
+                </button>
+                {guestSourceFilePath && (
+                  <div className="mt-3 max-w-full break-all text-xs text-cue-muted">{guestSourceFilePath}</div>
+                )}
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <label className="block text-sm font-medium">
+                  Section
+                  <select
+                    className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
+                    value={activeGuestSectionId}
+                    onChange={(event) => setGuestSectionId(event.target.value)}
+                  >
+                    {orderedSections.map((section) => (
+                      <option key={section.id} value={section.id}>
+                        {section.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block text-sm font-medium">
+                  Guest or group name
+                  <input
+                    className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                    placeholder="Optional"
+                    value={guestName}
+                    onChange={(event) => setGuestName(event.target.value)}
+                  />
+                </label>
+
+                <label className="block text-sm font-medium">
+                  Song title
+                  <input
+                    className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                    value={guestSongTitle}
+                    onChange={(event) => setGuestSongTitle(event.target.value)}
+                  />
+                </label>
+              </div>
+
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <p className="text-sm text-cue-muted">File is copied into today's service folder.</p>
+                <button
+                  className={buttonClass("primary")}
+                  type="button"
+                  disabled={isImportingGuest || !guestSourceFilePath}
+                  onClick={() => void handleImportGuestSong()}
+                >
+                  <Upload className="size-4" aria-hidden="true" />
+                  Add to Service
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isSettingsOpen && !isLiveMode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
