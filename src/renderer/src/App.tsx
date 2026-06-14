@@ -1,5 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit3,
+  FileAudio,
+  Folder,
+  GripVertical,
+  ListMusic,
+  Loader2,
+  MoreVertical,
+  Music,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Search,
+  Settings,
+  SkipBack,
+  SkipForward,
+  Square,
+  Upload,
+  Users,
+  Volume2,
+  X,
+} from "lucide-react";
 import { ServiceCueAudioPlayer, type PlaybackStatus, type TrackInfo } from "./audio/ServiceCueAudioPlayer";
+import serviceCueIcon from "./assets/servicecue-icon.png";
 
 type DeviceOption = {
   deviceId: string;
@@ -12,10 +40,13 @@ type LibraryTrack = LibraryIndex["tracks"][number];
 type ServiceSchedule = Parameters<typeof window.serviceCue.saveSchedule>[0];
 type ScheduleSection = ServiceSchedule["sections"][number];
 type ScheduleItem = ScheduleSection["items"][number];
-type FolderFilter = "All" | "Romanian" | "English" | "Instrumental" | "Seasonal" | "Special";
+type ScheduleListItem = Awaited<ReturnType<typeof window.serviceCue.listSchedules>>[number];
+type ServiceGroup = NonNullable<LibraryTrack["defaultGroup"]>;
 
-const folderFilters: FolderFilter[] = ["All", "Romanian", "English", "Instrumental", "Seasonal", "Special"];
-const defaultScheduleSections: Array<{ name: string; type: ServiceSchedule["sections"][number]["type"] }> = [
+const serviceGroups: ServiceGroup[] = ["Youth", "Choir", "Solo", "Guest", "Other"];
+const libraryFilters: Array<"All" | ServiceGroup> = ["All", ...serviceGroups];
+const fadeOptions = [3, 5, 8];
+const defaultScheduleSections: Array<{ name: string; type: ScheduleSection["type"] }> = [
   { name: "Youth", type: "Youth" },
   { name: "Choir", type: "Choir" },
   { name: "Solo", type: "Solo" },
@@ -46,6 +77,7 @@ function searchableText(track: LibraryTrack) {
   return normalizeSearch([
     track.displayTitle,
     track.fileName,
+    track.defaultGroup,
     track.folderType,
     track.id,
   ].filter(Boolean).join(" "));
@@ -94,7 +126,7 @@ function createDefaultSchedule(): ServiceSchedule {
   };
 }
 
-function findTrackById(libraryIndex: LibraryIndex, trackId: string) {
+function findTrackById(libraryIndex: LibraryIndex, trackId: string): LibraryTrack | undefined {
   const indexedTrack = libraryIndex.tracks.find((track) => track.id === trackId);
 
   if (indexedTrack) {
@@ -110,7 +142,8 @@ function findTrackById(libraryIndex: LibraryIndex, trackId: string) {
       filePath,
       fileName,
       displayTitle: fileName.replace(/\.[^.]+$/, ""),
-      source: "guest_import" as const,
+      defaultGroup: "Guest",
+      source: "guest_import",
     };
   }
 
@@ -127,48 +160,88 @@ function filePathFromDrop(event: React.DragEvent) {
   return file?.path;
 }
 
+function sectionIcon(type: ScheduleSection["type"]) {
+  if (type === "Solo" || type === "Guest") {
+    return <Users className="size-5" aria-hidden="true" />;
+  }
+
+  if (type === "Other" || type === "Custom") {
+    return <Music className="size-5" aria-hidden="true" />;
+  }
+
+  return <Users className="size-5" aria-hidden="true" />;
+}
+
+function iconButtonClass(active = false) {
+  return [
+    "inline-flex size-9 items-center justify-center rounded-md border text-sm font-semibold transition",
+    active
+      ? "border-cue-action bg-cue-action text-white shadow-sm"
+      : "border-cue-line bg-white text-cue-ink hover:bg-cue-panel",
+  ].join(" ");
+}
+
+function buttonClass(kind: "primary" | "secondary" | "ghost" = "secondary") {
+  if (kind === "primary") {
+    return "inline-flex items-center justify-center gap-2 rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45";
+  }
+
+  if (kind === "ghost") {
+    return "inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-cue-muted hover:bg-cue-panel disabled:cursor-not-allowed disabled:opacity-45";
+  }
+
+  return "inline-flex items-center justify-center gap-2 rounded-md border border-cue-line bg-white px-4 py-2 text-sm font-semibold text-cue-ink hover:bg-cue-panel disabled:cursor-not-allowed disabled:opacity-45";
+}
+
 export function App() {
   const playerRef = useRef<ServiceCueAudioPlayer | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [libraryIndex, setLibraryIndex] = useState<LibraryIndex>({ tracks: [] });
+  const [schedules, setSchedules] = useState<ScheduleListItem[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [mode, setMode] = useState<"setup" | "live">("setup");
   const [schedule, setSchedule] = useState<ServiceSchedule>(() => createDefaultSchedule());
   const [scheduleFilePath, setScheduleFilePath] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => "");
   const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
-  const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
   const [guestSourceFilePath, setGuestSourceFilePath] = useState("");
   const [guestSectionId, setGuestSectionId] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestSongTitle, setGuestSongTitle] = useState("");
   const [isImportingGuest, setIsImportingGuest] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [folderFilter, setFolderFilter] = useState<FolderFilter>("All");
+  const [groupFilter, setGroupFilter] = useState<"All" | ServiceGroup>("All");
   const [devices, setDevices] = useState<DeviceOption[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("default");
   const [missingSelectedDevice, setMissingSelectedDevice] = useState(false);
   const [track, setTrack] = useState<TrackInfo | null>(null);
+  const [loadedScheduleItemId, setLoadedScheduleItemId] = useState<string | null>(null);
   const [status, setStatus] = useState<PlaybackStatus>("idle");
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(100);
   const [fadeSeconds, setFadeSeconds] = useState(5);
-  const [message, setMessage] = useState("Choose an output device, then choose a local MP3, WAV, or M4A file.");
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editingSectionName, setEditingSectionName] = useState("");
+  const [openSectionMenuId, setOpenSectionMenuId] = useState<string | null>(null);
+  const [message, setMessage] = useState("Choose a master folder, build a schedule, then load a track.");
   const isLiveMode = mode === "live";
-  const progressPercent = useMemo(() => {
-    if (!track?.durationSeconds) {
-      return 0;
-    }
+  const isPlaying = status === "playing" || status === "fading";
 
-    return Math.min(100, (currentTime / track.durationSeconds) * 100);
-  }, [currentTime, track?.durationSeconds]);
+  const orderedSections = useMemo(
+    () => schedule.sections.slice().sort((a, b) => a.sortOrder - b.sortOrder),
+    [schedule.sections],
+  );
+  const activeSectionId = selectedSectionId || orderedSections[0]?.id || "";
+  const activeGuestSectionId = guestSectionId || orderedSections.find((section) => section.type === "Guest")?.id || activeSectionId;
+
   const filteredTracks = useMemo(() => {
     const normalizedQuery = normalizeSearch(searchQuery);
     const queryParts = normalizedQuery.split(/\s+/).filter(Boolean);
 
     return libraryIndex.tracks.filter((indexedTrack) => {
-      if (folderFilter !== "All" && indexedTrack.folderType !== folderFilter) {
+      if (groupFilter !== "All" && (indexedTrack.defaultGroup ?? "Other") !== groupFilter) {
         return false;
       }
 
@@ -179,13 +252,39 @@ export function App() {
       const haystack = searchableText(indexedTrack);
       return queryParts.every((part) => haystack.includes(part));
     });
-  }, [folderFilter, libraryIndex.tracks, searchQuery]);
-  const orderedSections = useMemo(
-    () => schedule.sections.slice().sort((a, b) => a.sortOrder - b.sortOrder),
-    [schedule.sections],
+  }, [groupFilter, libraryIndex.tracks, searchQuery]);
+
+  const progressPercent = useMemo(() => {
+    if (!track?.durationSeconds) {
+      return 0;
+    }
+
+    return Math.min(100, (currentTime / track.durationSeconds) * 100);
+  }, [currentTime, track?.durationSeconds]);
+
+  const scheduleQueue = useMemo(() => orderedSections.flatMap((section) =>
+    section.items
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((item) => ({ section, item })),
+  ), [orderedSections]);
+
+  const loadedScheduleEntry = useMemo(
+    () => scheduleQueue.find((entry) => entry.item.id === loadedScheduleItemId),
+    [loadedScheduleItemId, scheduleQueue],
   );
-  const activeSectionId = selectedSectionId || orderedSections[0]?.id || "";
-  const activeGuestSectionId = guestSectionId || orderedSections.find((section) => section.type === "Guest")?.id || activeSectionId;
+  const nowPlayingTrack = loadedScheduleEntry
+    ? findTrackById(libraryIndex, loadedScheduleEntry.item.trackId)
+    : track
+      ? libraryIndex.tracks.find((candidate) => candidate.filePath === track.filePath)
+      : undefined;
+  const nowPlayingTitle = loadedScheduleEntry?.item.customTitle
+    ?? nowPlayingTrack?.displayTitle
+    ?? track?.fileName
+    ?? "No track loaded";
+  const nowPlayingGroup = loadedScheduleEntry?.section.name
+    ?? nowPlayingTrack?.defaultGroup
+    ?? "Ready";
 
   useEffect(() => {
     if (!activeSectionId && orderedSections[0]) {
@@ -211,13 +310,15 @@ export function App() {
     Promise.all([
       window.serviceCue.readSettings(),
       window.serviceCue.readLibraryIndex(),
-    ]).then(([nextSettings, nextIndex]) => {
+      window.serviceCue.listSchedules(),
+    ]).then(([nextSettings, nextIndex, nextSchedules]) => {
       if (cancelled) {
         return;
       }
 
       setSettings(nextSettings);
       setLibraryIndex(nextIndex);
+      setSchedules(nextSchedules);
       setSelectedDeviceId(nextSettings.outputDeviceId);
       void refreshDevices(nextSettings.outputDeviceId);
 
@@ -307,6 +408,14 @@ export function App() {
     };
   }, [libraryIndex, schedule.sections]);
 
+  async function refreshScheduleList() {
+    try {
+      setSchedules(await window.serviceCue.listSchedules());
+    } catch {
+      setSchedules([]);
+    }
+  }
+
   async function refreshDevices(persistedDeviceId = selectedDeviceId) {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
@@ -360,6 +469,7 @@ export function App() {
       if (result) {
         setSettings(result.settings);
         setLibraryIndex(result.index);
+        await refreshScheduleList();
         setMessage(`Indexed ${result.index.tracks.length} audio files.`);
       }
     } catch (error) {
@@ -393,11 +503,22 @@ export function App() {
     }
   }
 
+  async function handleTrackGroupChange(trackId: string, defaultGroup: ServiceGroup) {
+    try {
+      const nextIndex = await window.serviceCue.updateTrackGroup(trackId, defaultGroup);
+      setLibraryIndex(nextIndex);
+      setMessage("Library group updated.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not update this track group.");
+    }
+  }
+
   function handleNewSchedule() {
     const nextSchedule = createDefaultSchedule();
     setSchedule(nextSchedule);
     setSelectedSectionId(nextSchedule.sections[0]?.id ?? "");
     setScheduleFilePath(null);
+    setLoadedScheduleItemId(null);
     setMessage("Created a new empty service order.");
   }
 
@@ -422,6 +543,7 @@ export function App() {
       const result = await window.serviceCue.saveSchedule(schedule);
       setSchedule(result.schedule);
       setScheduleFilePath(result.filePath);
+      await refreshScheduleList();
       setMessage(`Saved schedule to ${result.filePath}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save the service schedule.");
@@ -433,9 +555,8 @@ export function App() {
       const result = await window.serviceCue.loadSchedule();
 
       if (result) {
-        setSchedule(result.schedule);
-        setSelectedSectionId(result.schedule.sections[0]?.id ?? "");
-        setScheduleFilePath(result.filePath);
+        applyLoadedSchedule(result.schedule, result.filePath);
+        await refreshScheduleList();
         setMessage(`Loaded schedule from ${result.filePath}.`);
       }
     } catch (error) {
@@ -443,48 +564,25 @@ export function App() {
     }
   }
 
-  async function handlePickTrack() {
-    const filePath = await window.serviceCue.pickAudioFile();
-
+  async function handleLoadScheduleByPath(filePath: string) {
     if (!filePath) {
       return;
     }
 
     try {
-      const data = await window.serviceCue.readAudioFile(filePath);
-      const loadedTrack = await playerRef.current?.load(filePath, data, () => {
-        setStatus("stopped");
-        setCurrentTime(0);
-      });
-
-      if (loadedTrack) {
-        setTrack(loadedTrack);
-        setCurrentTime(0);
-        setStatus("stopped");
-        setMessage("Track loaded. Press Play when you are ready.");
-      }
+      const result = await window.serviceCue.loadScheduleByPath(filePath);
+      applyLoadedSchedule(result.schedule, result.filePath);
+      setMessage(`Loaded schedule from ${result.filePath}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not play this file. Try checking the file or audio output.");
+      setMessage(error instanceof Error ? error.message : "Could not load the selected schedule.");
     }
   }
 
-  async function loadTrackForPreview(indexedTrack: LibraryTrack) {
-    try {
-      const data = await window.serviceCue.readAudioFile(indexedTrack.filePath);
-      const loadedTrack = await playerRef.current?.load(indexedTrack.filePath, data, () => {
-        setStatus("stopped");
-        setCurrentTime(0);
-      });
-
-      if (loadedTrack) {
-        setTrack(loadedTrack);
-        setCurrentTime(0);
-        setStatus("stopped");
-        setMessage(`Loaded ${indexedTrack.displayTitle} from the library.`);
-      }
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not load this library track.");
-    }
+  function applyLoadedSchedule(nextSchedule: ServiceSchedule, filePath: string) {
+    setSchedule(nextSchedule);
+    setSelectedSectionId(nextSchedule.sections[0]?.id ?? "");
+    setScheduleFilePath(filePath);
+    setLoadedScheduleItemId(null);
   }
 
   function addTrackToSection(indexedTrack: LibraryTrack, sectionId = activeSectionId, customTitle?: string) {
@@ -523,13 +621,65 @@ export function App() {
     setMessage(`Added ${indexedTrack.displayTitle} to the service order.`);
   }
 
-  function openGuestModal() {
-    const defaultSectionId = orderedSections.find((section) => section.type === "Guest")?.id ?? orderedSections[0]?.id ?? "";
-    setGuestSectionId(defaultSectionId);
-    setGuestSourceFilePath("");
-    setGuestName("");
-    setGuestSongTitle("");
-    setIsGuestModalOpen(true);
+  function addSection() {
+    setSchedule((currentSchedule) => {
+      const section: ScheduleSection = {
+        id: crypto.randomUUID(),
+        name: "New Section",
+        type: "Custom",
+        sortOrder: currentSchedule.sections.length,
+        items: [],
+      };
+
+      return {
+        ...currentSchedule,
+        updatedAt: new Date().toISOString(),
+        sections: [...currentSchedule.sections, section],
+      };
+    });
+    setMessage("Added a new service section.");
+  }
+
+  function startEditingSection(section: ScheduleSection) {
+    setEditingSectionId(section.id);
+    setEditingSectionName(section.name);
+    setOpenSectionMenuId(null);
+  }
+
+  function commitSectionName() {
+    if (!editingSectionId) {
+      return;
+    }
+
+    const nextName = editingSectionName.trim();
+
+    if (!nextName) {
+      setEditingSectionId(null);
+      return;
+    }
+
+    setSchedule((currentSchedule) => ({
+      ...currentSchedule,
+      updatedAt: new Date().toISOString(),
+      sections: currentSchedule.sections.map((section) =>
+        section.id === editingSectionId ? { ...section, name: nextName } : section,
+      ),
+    }));
+    setEditingSectionId(null);
+    setEditingSectionName("");
+    setMessage("Section renamed.");
+  }
+
+  function removeSection(sectionId: string) {
+    setSchedule((currentSchedule) => ({
+      ...currentSchedule,
+      updatedAt: new Date().toISOString(),
+      sections: currentSchedule.sections
+        .filter((section) => section.id !== sectionId)
+        .map((section, index) => ({ ...section, sortOrder: index })),
+    }));
+    setOpenSectionMenuId(null);
+    setMessage("Removed section from the service order.");
   }
 
   async function handlePickGuestFile() {
@@ -588,10 +738,12 @@ export function App() {
 
       setLibraryIndex((currentIndex) => ({
         ...currentIndex,
-        tracks: [...currentIndex.tracks.filter((track) => track.id !== importedTrack.id), importedTrack],
+        tracks: [...currentIndex.tracks.filter((candidate) => candidate.id !== importedTrack.id), importedTrack],
       }));
       addTrackToSection(importedTrack, section.id, importedTrack.displayTitle);
-      setIsGuestModalOpen(false);
+      setGuestSourceFilePath("");
+      setGuestName("");
+      setGuestSongTitle("");
       setMessage(`Imported guest song ${importedTrack.displayTitle}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not import this guest song.");
@@ -600,14 +752,14 @@ export function App() {
     }
   }
 
-  function handleTrackDragStart(event: React.DragEvent<HTMLDivElement>, indexedTrack: LibraryTrack) {
+  function handleTrackDragStart(event: React.DragEvent<HTMLElement>, indexedTrack: LibraryTrack) {
     event.dataTransfer.effectAllowed = "copy";
     event.dataTransfer.setData("application/x-servicecue-track-id", indexedTrack.id);
     event.dataTransfer.setData("text/plain", indexedTrack.displayTitle);
   }
 
   function handleScheduleItemDragStart(
-    event: React.DragEvent<HTMLDivElement>,
+    event: React.DragEvent<HTMLElement>,
     sectionId: string,
     itemId: string,
   ) {
@@ -615,7 +767,7 @@ export function App() {
     event.dataTransfer.setData("application/x-servicecue-schedule-item", JSON.stringify({ sectionId, itemId }));
   }
 
-  function handleSectionDragOver(event: React.DragEvent<HTMLDivElement>, sectionId: string) {
+  function handleSectionDragOver(event: React.DragEvent<HTMLElement>, sectionId: string) {
     if (
       !event.dataTransfer.types.includes("application/x-servicecue-track-id") &&
       !event.dataTransfer.types.includes("application/x-servicecue-schedule-item")
@@ -630,7 +782,7 @@ export function App() {
     setDragOverSectionId(sectionId);
   }
 
-  function handleSectionDrop(event: React.DragEvent<HTMLDivElement>, sectionId: string) {
+  function handleSectionDrop(event: React.DragEvent<HTMLElement>, sectionId: string) {
     event.preventDefault();
     setDragOverSectionId(null);
     setDragOverItemId(null);
@@ -657,7 +809,7 @@ export function App() {
   }
 
   function handleScheduleItemDragOver(
-    event: React.DragEvent<HTMLDivElement>,
+    event: React.DragEvent<HTMLElement>,
     targetSectionId: string,
     targetItemId: string,
   ) {
@@ -673,7 +825,7 @@ export function App() {
   }
 
   function handleScheduleItemDrop(
-    event: React.DragEvent<HTMLDivElement>,
+    event: React.DragEvent<HTMLElement>,
     targetSectionId: string,
     targetItemId: string,
   ) {
@@ -738,14 +890,14 @@ export function App() {
           }
 
           const targetItems = section.items.slice().sort((a, b) => a.sortOrder - b.sortOrder);
-          const insertionIndex = beforeItemId
-            ? Math.max(0, targetItems.findIndex((item) => item.id === beforeItemId))
+          const targetIndex = beforeItemId
+            ? targetItems.findIndex((item) => item.id === beforeItemId)
             : targetItems.length;
-          const normalizedInsertionIndex = insertionIndex === -1 ? targetItems.length : insertionIndex;
+          const insertionIndex = targetIndex < 0 ? targetItems.length : targetIndex;
           const nextItems = [
-            ...targetItems.slice(0, normalizedInsertionIndex),
+            ...targetItems.slice(0, insertionIndex),
             movingItem,
-            ...targetItems.slice(normalizedInsertionIndex),
+            ...targetItems.slice(insertionIndex),
           ].map((item, index) => ({ ...item, sortOrder: index }));
 
           return {
@@ -779,6 +931,26 @@ export function App() {
     setMessage("Removed track from the service order.");
   }
 
+  async function loadIndexedTrack(indexedTrack: LibraryTrack, itemId?: string) {
+    try {
+      const data = await window.serviceCue.readAudioFile(indexedTrack.filePath);
+      const loadedTrack = await playerRef.current?.load(indexedTrack.filePath, data, () => {
+        setStatus("stopped");
+        setCurrentTime(0);
+      });
+
+      if (loadedTrack) {
+        setTrack(loadedTrack);
+        setLoadedScheduleItemId(itemId ?? null);
+        setCurrentTime(0);
+        setStatus("stopped");
+        setMessage(`Loaded ${indexedTrack.displayTitle}.`);
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not load this track.");
+    }
+  }
+
   async function loadScheduleItem(item: ScheduleItem) {
     const indexedTrack = findTrackById(libraryIndex, item.trackId);
 
@@ -787,7 +959,7 @@ export function App() {
       return;
     }
 
-    await loadTrackForPreview(indexedTrack);
+    await loadIndexedTrack(indexedTrack, item.id);
   }
 
   async function locateScheduleItem(sectionId: string, itemId: string) {
@@ -799,7 +971,7 @@ export function App() {
 
     setLibraryIndex((currentIndex) => ({
       ...currentIndex,
-      tracks: [...currentIndex.tracks.filter((track) => track.id !== replacementTrack.id), replacementTrack],
+      tracks: [...currentIndex.tracks.filter((candidate) => candidate.id !== replacementTrack.id), replacementTrack],
     }));
     setSchedule((currentSchedule) => ({
       ...currentSchedule,
@@ -870,620 +1042,641 @@ export function App() {
     }
   }
 
+  async function playQueueOffset(offset: -1 | 1) {
+    const currentIndex = loadedScheduleItemId
+      ? scheduleQueue.findIndex((entry) => entry.item.id === loadedScheduleItemId)
+      : -1;
+    const fallbackIndex = offset > 0 ? 0 : scheduleQueue.length - 1;
+    const nextEntry = scheduleQueue[currentIndex + offset] ?? scheduleQueue[fallbackIndex];
+
+    if (!nextEntry) {
+      setMessage("No schedule tracks are available.");
+      return;
+    }
+
+    await loadScheduleItem(nextEntry.item);
+  }
+
   return (
-    <main className="min-h-screen bg-cue-panel text-cue-ink">
+    <main className="flex min-h-screen flex-col bg-cue-panel text-cue-ink">
       <header className="border-b border-cue-line bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-2xl font-semibold">ServiceCue</h1>
-            <p className="text-sm text-cue-muted">Local backing-track player for church services</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="rounded border border-cue-line px-3 py-1.5 text-sm font-medium text-cue-muted">
-              Build steps 1-10
-            </div>
-            <div className="flex rounded-md border border-cue-line p-1">
-              <button
-                className={[
-                  "rounded px-3 py-1.5 text-sm font-semibold",
-                  mode === "setup" ? "bg-cue-action text-white" : "text-cue-muted hover:bg-cue-panel",
-                ].join(" ")}
-                type="button"
-                onClick={() => setMode("setup")}
-              >
-                Setup
-              </button>
-              <button
-                className={[
-                  "rounded px-3 py-1.5 text-sm font-semibold",
-                  mode === "live" ? "bg-cue-action text-white" : "text-cue-muted hover:bg-cue-panel",
-                ].join(" ")}
-                type="button"
-                onClick={() => setMode("live")}
-              >
-                Live
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <section
-        className={[
-          "mx-auto grid max-w-7xl gap-6 px-6 py-6",
-          isLiveMode ? "xl:grid-cols-[minmax(520px,1fr)_560px]" : "xl:grid-cols-[360px_minmax(360px,1fr)_360px]",
-        ].join(" ")}
-      >
-        <div className={["rounded-lg border border-cue-line bg-white p-5 shadow-sm", isLiveMode ? "hidden" : ""].join(" ")}>
-          <h2 className="text-lg font-semibold">Library</h2>
-          <p className="mt-1 text-sm text-cue-muted">
-            Choose the Negativ Library folder. ServiceCue indexes on open and manual rescan only.
-          </p>
-
-          <div className="mt-5 rounded-md border border-cue-line bg-cue-panel p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-cue-muted">Master folder</div>
-            <div className="mt-1 break-all text-sm">
-              {settings?.masterFolderPath || "No folder selected"}
+        <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-5 py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <img className="size-10 shrink-0 rounded-lg shadow-sm" src={serviceCueIcon} alt="" />
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-semibold leading-tight">ServiceCue</h1>
+              <p className="truncate text-sm text-cue-muted">Local backing-track player for church services</p>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-3">
+          <div className="flex rounded-md border border-cue-line bg-white p-1">
             <button
-              className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
+              className={[
+                "rounded px-5 py-2 text-sm font-semibold",
+                mode === "setup" ? "bg-cue-action text-white shadow-sm" : "text-cue-muted hover:bg-cue-panel",
+              ].join(" ")}
               type="button"
-              disabled={isScanning}
-              onClick={() => void handleChooseMasterFolder()}
+              onClick={() => setMode("setup")}
             >
-              Change Folder
+              Setup
             </button>
             <button
-              className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel disabled:cursor-not-allowed disabled:opacity-45"
+              className={[
+                "rounded px-5 py-2 text-sm font-semibold",
+                mode === "live" ? "bg-cue-action text-white shadow-sm" : "text-cue-muted hover:bg-cue-panel",
+              ].join(" ")}
               type="button"
-              disabled={isScanning || !settings?.masterFolderPath}
-              onClick={() => void handleRescan()}
+              onClick={() => setMode("live")}
             >
-              Rescan Library
+              Live
             </button>
           </div>
 
-          <div className="mt-4 text-sm text-cue-muted">
-            <div>Tracks indexed: <span className="font-semibold text-cue-ink">{libraryIndex.tracks.length}</span></div>
-            <div>Search results: <span className="font-semibold text-cue-ink">{filteredTracks.length}</span></div>
-            <div>Last scanned: <span className="font-semibold text-cue-ink">{formatScanTime(settings?.lastScannedAt ?? libraryIndex.scannedAt)}</span></div>
-          </div>
-
-          <label className="mt-4 block text-sm font-medium" htmlFor="target-section">
-            Add search results to
-          </label>
           <select
-            id="target-section"
-            className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
-            value={activeSectionId}
-            onChange={(event) => setSelectedSectionId(event.target.value)}
+            className="hidden min-w-64 rounded-md border border-cue-line bg-white px-3 py-2 text-sm font-medium lg:block"
+            value={scheduleFilePath ?? ""}
+            onChange={(event) => void handleLoadScheduleByPath(event.target.value)}
+            title="Current service"
           >
-            {orderedSections.map((section) => (
-              <option key={section.id} value={section.id}>
-                {section.name}
+            <option value="">{schedule.name}</option>
+            {schedules.map((item) => (
+              <option key={item.filePath} value={item.filePath}>
+                {item.name}
               </option>
             ))}
           </select>
 
-          <div className="mt-5 border-t border-cue-line pt-4">
-            <label className="block text-sm font-medium" htmlFor="library-search">
-              Search library
-            </label>
-            <input
-              id="library-search"
-              className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
-              placeholder="Title, filename, folder trait"
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
+          <div className="flex items-center gap-2">
+            {!isLiveMode && (
+              <>
+                <button className={buttonClass("secondary")} type="button" onClick={() => void handleSaveSchedule()}>
+                  <Save className="size-4" aria-hidden="true" />
+                  Save
+                </button>
+                <button className={buttonClass("secondary")} type="button" onClick={() => void handleLoadSchedule()}>
+                  <Folder className="size-4" aria-hidden="true" />
+                  Load
+                </button>
+                <button className={buttonClass("secondary")} type="button" onClick={() => setIsSettingsOpen(true)}>
+                  <Settings className="size-4" aria-hidden="true" />
+                  Settings
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
 
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {folderFilters.map((filter) => (
+      {missingSelectedDevice && (
+        <div className="border-b border-amber-300 bg-amber-50 px-5 py-2 text-sm font-medium text-cue-warm">
+          The saved output device is missing. ServiceCue has fallen back to the system default.
+        </div>
+      )}
+
+      <section
+        className={[
+          "mx-auto grid w-full max-w-[1600px] flex-1 gap-3 px-3 py-3 lg:px-5 lg:py-4",
+          isLiveMode ? "grid-cols-1" : "xl:grid-cols-[minmax(330px,0.9fr)_minmax(520px,1.55fr)_minmax(300px,0.8fr)]",
+        ].join(" ")}
+      >
+        {!isLiveMode && (
+          <aside className="flex min-h-[540px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Library</h2>
+              <span className="text-xs font-semibold text-cue-muted">{libraryIndex.tracks.length} tracks</span>
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 rounded-md border border-cue-line bg-cue-panel px-3 py-2">
+              <Folder className="size-4 shrink-0 text-cue-muted" aria-hidden="true" />
+              <div className="min-w-0 flex-1 truncate text-sm text-cue-muted">
+                {settings?.masterFolderPath || "No folder selected"}
+              </div>
+              <button
+                className={iconButtonClass()}
+                type="button"
+                title="Change folder"
+                disabled={isScanning}
+                onClick={() => void handleChooseMasterFolder()}
+              >
+                {isScanning ? <Loader2 className="size-4 animate-spin" /> : <MoreVertical className="size-4" />}
+              </button>
+            </div>
+
+            <div className="mt-3 flex items-center gap-2 rounded-md border border-cue-line bg-white px-3 py-2">
+              <Search className="size-4 shrink-0 text-cue-muted" aria-hidden="true" />
+              <input
+                className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
+                placeholder="Search songs, groups, or filename"
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {libraryFilters.map((filter) => (
                 <button
                   key={filter}
                   className={[
-                    "rounded-md border px-3 py-2 text-sm font-semibold",
-                    folderFilter === filter
-                      ? "border-cue-action bg-blue-50 text-cue-action"
-                      : "border-cue-line hover:bg-cue-panel",
+                    "rounded-md border px-3 py-1.5 text-sm font-semibold transition",
+                    groupFilter === filter
+                      ? "border-cue-action bg-cue-action text-white"
+                      : "border-cue-line bg-white text-cue-ink hover:bg-cue-panel",
                   ].join(" ")}
                   type="button"
-                  onClick={() => setFolderFilter(filter)}
+                  onClick={() => setGroupFilter(filter)}
                 >
                   {filter}
                 </button>
               ))}
             </div>
-          </div>
 
-          <div className="mt-5 space-y-3 border-t border-cue-line pt-4 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                className="size-4 accent-cue-action"
-                type="checkbox"
-                checked={settings?.includeInbox ?? false}
-                onChange={(event) => void handleIncludeToggle("includeInbox", event.target.checked)}
-              />
-              Include Inbox
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                className="size-4 accent-cue-action"
-                type="checkbox"
-                checked={settings?.includeArchive ?? false}
-                onChange={(event) => void handleIncludeToggle("includeArchive", event.target.checked)}
-              />
-              Include Archive
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                className="size-4 accent-cue-action"
-                type="checkbox"
-                checked={settings?.includeDoNotUse ?? false}
-                onChange={(event) => void handleIncludeToggle("includeDoNotUse", event.target.checked)}
-              />
-              Include Do Not Use
-            </label>
-          </div>
-
-          <div className="mt-5 max-h-72 overflow-auto rounded-md border border-cue-line">
-            {filteredTracks.slice(0, 20).map((indexedTrack) => (
-              <div
-                key={indexedTrack.id}
-                className="cursor-grab border-b border-cue-line px-3 py-2 last:border-b-0 active:cursor-grabbing"
-                draggable
-                onDragStart={(event) => handleTrackDragStart(event, indexedTrack)}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold">{indexedTrack.displayTitle}</div>
-                    <div className="truncate text-xs text-cue-muted">
-                      {indexedTrack.folderType ?? "Audio"} · {formatTime(indexedTrack.durationSeconds ?? 0)}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      className="rounded-md border border-cue-line px-2.5 py-1 text-xs font-semibold hover:bg-cue-panel"
-                      type="button"
-                      onClick={() => void loadTrackForPreview(indexedTrack)}
-                    >
-                      Preview
-                    </button>
-                    <button
-                      className="rounded-md bg-cue-action px-2.5 py-1 text-xs font-semibold text-white hover:bg-cue-actionDark"
-                      type="button"
-                      onClick={() => addTrackToSection(indexedTrack)}
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {filteredTracks.length > 20 && (
-              <div className="px-3 py-2 text-xs text-cue-muted">
-                Showing first 20 matches. Narrow the search to find more.
-              </div>
-            )}
-            {libraryIndex.tracks.length === 0 && (
-              <div className="px-3 py-6 text-sm text-cue-muted">No indexed tracks yet.</div>
-            )}
-            {libraryIndex.tracks.length > 0 && filteredTracks.length === 0 && (
-              <div className="px-3 py-6 text-sm text-cue-muted">No tracks match this search.</div>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-cue-line bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold">Service Order</h2>
-          <p className="mt-1 text-sm text-cue-muted">
-            {isLiveMode ? "Playback-only view for the current service." : "JSON schedule model with the default service sections."}
-          </p>
-
-          {isLiveMode ? (
-            <div className="mt-5 rounded-md border border-cue-line bg-cue-panel p-3">
-              <div className="text-xs font-semibold uppercase tracking-wide text-cue-muted">Current service</div>
-              <div className="mt-1 text-sm font-semibold">{schedule.name}</div>
-              <div className="text-xs text-cue-muted">{schedule.date}</div>
+            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_96px_64px] border-b border-cue-line px-3 pb-2 text-xs font-semibold uppercase text-cue-muted">
+              <div>Title</div>
+              <div>Group</div>
+              <div className="text-right">Length</div>
             </div>
-          ) : (
-            <>
-              <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_150px]">
-                <label className="block text-sm font-medium">
-                  Service name
-                  <input
-                    className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
-                    value={schedule.name}
-                    onChange={(event) => updateScheduleName(event.target.value)}
-                  />
-                </label>
 
-                <label className="block text-sm font-medium">
-                  Date
-                  <input
-                    className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
-                    type="date"
-                    value={schedule.date}
-                    onChange={(event) => updateScheduleDate(event.target.value)}
-                  />
-                </label>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
-                  type="button"
-                  onClick={handleNewSchedule}
+            <div className="min-h-0 flex-1 overflow-auto">
+              {filteredTracks.map((indexedTrack) => (
+                <div
+                  key={indexedTrack.id}
+                  className="grid cursor-grab grid-cols-[minmax(0,1fr)_96px_64px] items-center gap-2 border-b border-cue-line px-3 py-2 text-sm hover:bg-blue-50 active:cursor-grabbing"
+                  draggable
+                  onDoubleClick={() => addTrackToSection(indexedTrack)}
+                  onDragStart={(event) => handleTrackDragStart(event, indexedTrack)}
                 >
+                  <button
+                    className="min-w-0 truncate text-left font-medium"
+                    type="button"
+                    title="Preview track"
+                    onClick={() => void loadIndexedTrack(indexedTrack)}
+                  >
+                    {indexedTrack.displayTitle}
+                  </button>
+                  <select
+                    className="rounded border border-cue-line bg-white px-1 py-1 text-xs"
+                    value={indexedTrack.defaultGroup ?? "Other"}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={(event) => void handleTrackGroupChange(indexedTrack.id, event.target.value as ServiceGroup)}
+                  >
+                    {serviceGroups.map((group) => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                  <div className="text-right tabular-nums text-cue-ink">{formatTime(indexedTrack.durationSeconds ?? 0)}</div>
+                </div>
+              ))}
+              {filteredTracks.length === 0 && (
+                <div className="px-3 py-8 text-sm text-cue-muted">
+                  {libraryIndex.tracks.length === 0 ? "No indexed tracks yet." : "No tracks match this search."}
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
+
+        <section className="flex min-h-[540px] flex-col rounded-md border border-cue-line bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">{isLiveMode ? "Service Order" : "Today's Schedule"}</h2>
+              <p className="text-sm text-cue-muted">{schedule.name}</p>
+            </div>
+            {!isLiveMode && (
+              <div className="flex items-center gap-2">
+                <input
+                  className="w-56 rounded-md border border-cue-line px-3 py-2 text-sm"
+                  value={schedule.name}
+                  onChange={(event) => updateScheduleName(event.target.value)}
+                  aria-label="Service name"
+                />
+                <input
+                  className="w-36 rounded-md border border-cue-line px-3 py-2 text-sm"
+                  type="date"
+                  value={schedule.date}
+                  onChange={(event) => updateScheduleDate(event.target.value)}
+                  aria-label="Service date"
+                />
+                <button className={buttonClass("ghost")} type="button" onClick={handleNewSchedule}>
                   New
                 </button>
-                <button
-                  className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
-                  type="button"
-                  onClick={() => void handleSaveSchedule()}
-                >
-                  Save
-                </button>
-                <button
-                  className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
-                  type="button"
-                  onClick={() => void handleLoadSchedule()}
-                >
-                  Load
-                </button>
               </div>
+            )}
+          </div>
 
-              <div className="mt-4 rounded-md border border-cue-line bg-cue-panel p-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-cue-muted">Schedule file</div>
-                <div className="mt-1 break-all text-sm">{scheduleFilePath ?? "Not saved yet"}</div>
-              </div>
-            </>
-          )}
-
-          <div className="mt-5 space-y-3">
-            {orderedSections
-              .map((section) => (
-                <div
-                  key={section.id}
-                  className={[
-                    "rounded-md border p-3 transition-colors",
-                    dragOverSectionId === section.id
-                      ? "border-cue-action bg-blue-50"
-                      : "border-cue-line",
-                  ].join(" ")}
-                  onDragLeave={isLiveMode ? undefined : () => setDragOverSectionId((current) => current === section.id ? null : current)}
-                  onDragOver={isLiveMode ? undefined : (event) => handleSectionDragOver(event, section.id)}
-                  onDrop={isLiveMode ? undefined : (event) => handleSectionDrop(event, section.id)}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{section.name}</div>
-                      <div className="text-xs text-cue-muted">{section.type}</div>
-                    </div>
-                    <div className="rounded border border-cue-line px-2 py-1 text-xs font-semibold text-cue-muted">
-                      {section.items.length} songs
-                    </div>
+          <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-auto pr-1">
+            {orderedSections.map((section) => (
+              <div
+                key={section.id}
+                className={[
+                  "rounded-md border bg-white p-3 transition-colors",
+                  dragOverSectionId === section.id
+                    ? "border-cue-action bg-blue-50"
+                    : "border-cue-line",
+                ].join(" ")}
+                onDragLeave={isLiveMode ? undefined : () => setDragOverSectionId((current) => current === section.id ? null : current)}
+                onDragOver={isLiveMode ? undefined : (event) => handleSectionDragOver(event, section.id)}
+                onDrop={isLiveMode ? undefined : (event) => handleSectionDrop(event, section.id)}
+              >
+                <div className="flex items-center justify-between gap-3 border-b border-cue-line pb-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="text-cue-action">{sectionIcon(section.type)}</div>
+                    {editingSectionId === section.id ? (
+                      <input
+                        className="min-w-0 rounded-md border border-cue-line px-2 py-1 text-sm font-semibold"
+                        value={editingSectionName}
+                        autoFocus
+                        onBlur={commitSectionName}
+                        onChange={(event) => setEditingSectionName(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") commitSectionName();
+                          if (event.key === "Escape") setEditingSectionId(null);
+                        }}
+                      />
+                    ) : (
+                      <div className="min-w-0 truncate text-base font-semibold text-cue-action">{section.name}</div>
+                    )}
                   </div>
-                  <div className="mt-3 space-y-2">
-                    {section.items
-                      .slice()
-                      .sort((a, b) => a.sortOrder - b.sortOrder)
-                      .map((item, index) => {
-                        const indexedTrack = findTrackById(libraryIndex, item.trackId);
-                        const title = item.customTitle ?? indexedTrack?.displayTitle ?? item.trackId;
-                        const duration = indexedTrack?.durationSeconds;
-                        const isMissing = item.status === "missing" || !indexedTrack;
-
-                        return (
-                          <div
-                            key={item.id}
-                            className={[
-                              `${isLiveMode ? "" : "cursor-grab active:cursor-grabbing"} rounded border bg-cue-panel px-3 py-2`,
-                              isMissing
-                                ? "border-amber-300 bg-amber-50"
-                                : dragOverItemId === item.id
-                                  ? "border-cue-action ring-2 ring-blue-100"
-                                  : "border-cue-line",
-                            ].join(" ")}
-                            draggable={!isLiveMode}
-                            onDragEnd={() => {
-                              setDragOverItemId(null);
-                              setDragOverSectionId(null);
-                            }}
-                            onDragOver={isLiveMode ? undefined : (event) => handleScheduleItemDragOver(event, section.id, item.id)}
-                            onDragStart={isLiveMode ? undefined : (event) => handleScheduleItemDragStart(event, section.id, item.id)}
-                            onDrop={isLiveMode ? undefined : (event) => handleScheduleItemDrop(event, section.id, item.id)}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-medium">
-                                  {index + 1}. {title}
-                                </div>
-                                <div className={["text-xs", isMissing ? "font-semibold text-cue-warm" : "text-cue-muted"].join(" ")}>
-                                  {isMissing ? "Missing file" : formatTime(duration ?? 0)}
-                                </div>
-                              </div>
-                              <div className="flex shrink-0 gap-2">
-                                <button
-                                  className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-45"
-                                  type="button"
-                                  disabled={isMissing}
-                                  onClick={() => void loadScheduleItem(item)}
-                                >
-                                  Load
-                                </button>
-                                {isMissing && !isLiveMode && (
-                                  <button
-                                    className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70"
-                                    type="button"
-                                    onClick={() => void locateScheduleItem(section.id, item.id)}
-                                  >
-                                    Locate
-                                  </button>
-                                )}
-                                {!isLiveMode && (
-                                  <button
-                                    className="rounded-md border border-cue-line bg-white px-2.5 py-1 text-xs font-semibold hover:bg-white/70"
-                                    type="button"
-                                    onClick={() => removeScheduleItem(section.id, item.id)}
-                                  >
-                                    Remove
-                                  </button>
-                                )}
-                              </div>
-                            </div>
+                  <div className="relative flex items-center gap-2">
+                    <span className="text-sm text-cue-muted">{section.items.length} {section.items.length === 1 ? "song" : "songs"}</span>
+                    {!isLiveMode && (
+                      <>
+                        <button className={iconButtonClass()} type="button" title="Rename section" onClick={() => startEditingSection(section)}>
+                          <Edit3 className="size-4" aria-hidden="true" />
+                        </button>
+                        <button
+                          className={iconButtonClass()}
+                          type="button"
+                          title="Section menu"
+                          onClick={() => setOpenSectionMenuId((current) => current === section.id ? null : section.id)}
+                        >
+                          <MoreVertical className="size-4" aria-hidden="true" />
+                        </button>
+                        {openSectionMenuId === section.id && (
+                          <div className="absolute right-0 top-10 z-10 w-44 rounded-md border border-cue-line bg-white p-1 shadow-lg">
+                            <button className={buttonClass("ghost") + " w-full justify-start"} type="button" onClick={() => startEditingSection(section)}>
+                              Rename section
+                            </button>
+                            <button
+                              className={buttonClass("ghost") + " w-full justify-start text-cue-warm"}
+                              type="button"
+                              disabled={orderedSections.length <= 1}
+                              onClick={() => removeSection(section.id)}
+                            >
+                              Remove section
+                            </button>
                           </div>
-                        );
-                      })}
-                    {section.items.length === 0 && (
-                      <div className="rounded border border-dashed border-cue-line px-3 py-2 text-sm text-cue-muted">
-                        No songs in this section.
-                      </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
-              ))}
-          </div>
-        </div>
 
-        <div className={["rounded-lg border border-cue-line bg-white p-5 shadow-sm", isLiveMode ? "hidden" : ""].join(" ")}>
-          <h2 className="text-lg font-semibold">Import Guest File</h2>
-          <p className="mt-1 text-sm text-cue-muted">
-            Drop a guest track, pick the section, and copy it into this service.
-          </p>
+                <div className="divide-y divide-cue-line">
+                  {section.items
+                    .slice()
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((item, index) => {
+                      const indexedTrack = findTrackById(libraryIndex, item.trackId);
+                      const title = item.customTitle ?? indexedTrack?.displayTitle ?? item.trackId;
+                      const duration = indexedTrack?.durationSeconds;
+                      const isMissing = item.status === "missing" || !indexedTrack;
+                      const isLoaded = loadedScheduleItemId === item.id;
 
-          <div
-            className="mt-5 rounded-md border border-dashed border-cue-line bg-cue-panel px-4 py-6 text-center"
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={handleGuestDrop}
-          >
-            <div className="text-sm font-semibold">Drop MP3, WAV, or M4A here</div>
-            <div className="mt-1 break-all text-xs text-cue-muted">
-              {guestSourceFilePath || "or browse for a guest file"}
-            </div>
-            <button
-              className="mt-4 rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
-              type="button"
-              onClick={() => void handlePickGuestFile()}
-            >
-              Browse
-            </button>
-          </div>
-
-          <div className="mt-5 grid gap-4">
-            <label className="block text-sm font-medium">
-              Section
-              <select
-                className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
-                value={activeGuestSectionId}
-                onChange={(event) => setGuestSectionId(event.target.value)}
-              >
-                {orderedSections.map((section) => (
-                  <option key={section.id} value={section.id}>
-                    {section.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block text-sm font-medium">
-              Guest or group name
-              <input
-                className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
-                placeholder="Optional"
-                value={guestName}
-                onChange={(event) => setGuestName(event.target.value)}
-              />
-            </label>
-
-            <label className="block text-sm font-medium">
-              Song title
-              <input
-                className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
-                value={guestSongTitle}
-                onChange={(event) => setGuestSongTitle(event.target.value)}
-              />
-            </label>
-          </div>
-
-          <button
-            className="mt-5 w-full rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
-            type="button"
-            disabled={isImportingGuest || !guestSourceFilePath}
-            onClick={() => void handleImportGuestSong()}
-          >
-            Add to Service
-          </button>
-
-          <div className="mt-3 text-xs text-cue-muted">
-            Guest files are copied into the current service Incoming folder before playback.
-          </div>
-        </div>
-
-        <div className={["rounded-lg border border-cue-line bg-white p-5 shadow-sm", isLiveMode ? "" : "xl:col-span-3"].join(" ")}>
-          <div className={["grid gap-6", isLiveMode ? "grid-cols-1" : "xl:grid-cols-[360px_1fr]"].join(" ")}>
-            <div>
-              <h2 className="text-lg font-semibold">Output</h2>
-              <p className="mt-1 text-sm text-cue-muted">
-                Pick the device that feeds the mixer.
-              </p>
-
-              <label className="mt-5 block text-sm font-medium" htmlFor="output-device">
-                Audio output device
-              </label>
-              <select
-                id="output-device"
-                className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
-                value={selectedDeviceId}
-                onChange={(event) => void handleDeviceChange(event.target.value)}
-              >
-                {devices.map((device) => (
-                  <option key={device.deviceId} value={device.deviceId}>
-                    {device.label}
-                  </option>
-                ))}
-              </select>
-
-              {missingSelectedDevice && (
-                <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-cue-warm">
-                  The saved output device is missing. ServiceCue has fallen back to the system default.
+                      return (
+                        <div
+                          key={item.id}
+                          className={[
+                            "grid grid-cols-[28px_34px_minmax(0,1fr)_64px_44px] items-center gap-2 py-2 text-sm",
+                            !isLiveMode ? "cursor-grab active:cursor-grabbing" : "",
+                            isMissing ? "bg-amber-50 text-cue-warm" : "",
+                            dragOverItemId === item.id ? "rounded-md bg-blue-50 ring-2 ring-blue-100" : "",
+                          ].join(" ")}
+                          draggable={!isLiveMode}
+                          onDragEnd={() => {
+                            setDragOverItemId(null);
+                            setDragOverSectionId(null);
+                          }}
+                          onDragOver={isLiveMode ? undefined : (event) => handleScheduleItemDragOver(event, section.id, item.id)}
+                          onDragStart={isLiveMode ? undefined : (event) => handleScheduleItemDragStart(event, section.id, item.id)}
+                          onDrop={isLiveMode ? undefined : (event) => handleScheduleItemDrop(event, section.id, item.id)}
+                        >
+                          <GripVertical className={["size-4", isLiveMode ? "opacity-0" : "text-cue-muted"].join(" ")} aria-hidden="true" />
+                          <div className="tabular-nums text-cue-muted">{index + 1}</div>
+                          <div className="min-w-0">
+                            <div className={["truncate font-medium", isLoaded ? "text-cue-action" : ""].join(" ")}>{title}</div>
+                            {isMissing && <div className="text-xs font-semibold">Missing file</div>}
+                          </div>
+                          <div className="text-right tabular-nums text-cue-ink">{isMissing ? "--" : formatTime(duration ?? 0)}</div>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              className={iconButtonClass(isLoaded)}
+                              type="button"
+                              title="Load track"
+                              disabled={isMissing}
+                              onClick={() => void loadScheduleItem(item)}
+                            >
+                              <Play className="size-4 fill-current" aria-hidden="true" />
+                            </button>
+                            {isMissing && !isLiveMode && (
+                              <button
+                                className={iconButtonClass()}
+                                type="button"
+                                title="Locate file"
+                                onClick={() => void locateScheduleItem(section.id, item.id)}
+                              >
+                                <Folder className="size-4" aria-hidden="true" />
+                              </button>
+                            )}
+                            {!isLiveMode && !isMissing && (
+                              <button
+                                className={iconButtonClass()}
+                                type="button"
+                                title="Remove track"
+                                onClick={() => removeScheduleItem(section.id, item.id)}
+                              >
+                                <X className="size-4" aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {section.items.length === 0 && (
+                    <div className="rounded-md border border-dashed border-cue-line px-3 py-3 text-sm text-cue-muted">
+                      No songs in this section.
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            ))}
+          </div>
 
-              <div className="mt-4 flex gap-3">
-                <button
-                  className="rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
-                  type="button"
-                  onClick={() => void handleTestOutput()}
+          {!isLiveMode && (
+            <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-cue-action px-4 py-2 text-sm font-semibold text-cue-action hover:bg-blue-50" type="button" onClick={addSection}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add Section
+            </button>
+          )}
+        </section>
+
+        {!isLiveMode && (
+          <aside className="flex min-h-[540px] flex-col rounded-md border border-cue-line bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold">Import Guest File</h2>
+
+            <div
+              className="mt-8 flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-cue-line bg-cue-panel px-6 py-8 text-center"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleGuestDrop}
+            >
+              <FileAudio className="size-12 text-cue-muted" aria-hidden="true" />
+              <div className="mt-4 text-base font-semibold">{guestSourceFilePath ? titleFromFilePath(guestSourceFilePath) : "Drop MP3 here"}</div>
+              <button className="mt-1 text-sm font-semibold text-cue-action hover:underline" type="button" onClick={() => void handlePickGuestFile()}>
+                or browse
+              </button>
+              {guestSourceFilePath && (
+                <div className="mt-3 max-w-full break-all text-xs text-cue-muted">{guestSourceFilePath}</div>
+              )}
+            </div>
+
+            <div className="mt-5 grid gap-4">
+              <label className="block text-sm font-medium">
+                Section
+                <select
+                  className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
+                  value={activeGuestSectionId}
+                  onChange={(event) => setGuestSectionId(event.target.value)}
                 >
-                  Test Output
-                </button>
-                <button
-                  className="rounded-md border border-cue-line px-4 py-2 text-sm font-semibold hover:bg-cue-panel"
-                  type="button"
-                  onClick={() => void refreshDevices()}
-                >
-                  Refresh
-                </button>
+                  {orderedSections.map((section) => (
+                    <option key={section.id} value={section.id}>
+                      {section.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-sm font-medium">
+                Guest or group name
+                <input
+                  className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                  placeholder="Optional"
+                  value={guestName}
+                  onChange={(event) => setGuestName(event.target.value)}
+                />
+              </label>
+
+              <label className="block text-sm font-medium">
+                Song title
+                <input
+                  className="mt-2 w-full rounded-md border border-cue-line px-3 py-2 text-sm"
+                  value={guestSongTitle}
+                  onChange={(event) => setGuestSongTitle(event.target.value)}
+                />
+              </label>
+            </div>
+
+            <button
+              className={buttonClass("primary") + " mt-5 w-full"}
+              type="button"
+              disabled={isImportingGuest || !guestSourceFilePath}
+              onClick={() => void handleImportGuestSong()}
+            >
+              <Upload className="size-4" aria-hidden="true" />
+              Add to Service
+            </button>
+
+            <p className="mt-4 text-center text-sm text-cue-muted">
+              File is copied into today's service folder.
+            </p>
+          </aside>
+        )}
+      </section>
+
+      <footer className="border-t border-cue-line bg-white px-4 py-3">
+        <div className="mx-auto grid max-w-[1600px] items-center gap-4 xl:grid-cols-[minmax(300px,1fr)_minmax(420px,1.2fr)_minmax(360px,1fr)]">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-md border border-cue-line bg-cue-panel text-cue-muted">
+              <Music className="size-8" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-cue-action">Now Playing</div>
+              <div className="truncate text-lg font-semibold">{nowPlayingTitle}</div>
+              <div className="truncate text-sm text-cue-ink">{nowPlayingGroup}</div>
+              <div className="mt-2 flex items-center gap-3">
+                <span className="w-10 text-sm tabular-nums">{formatTime(currentTime)}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-cue-line">
+                  <div className="h-full rounded-full bg-cue-action transition-[width]" style={{ width: `${progressPercent}%` }} />
+                </div>
+                <span className="w-10 text-right text-sm tabular-nums">{formatTime(track?.durationSeconds ?? 0)}</span>
               </div>
             </div>
-
-            <div>
-              <h2 className="text-lg font-semibold">Player</h2>
-              <p className="mt-1 text-sm text-cue-muted">
-                Load from the library, service order, guest import, or a local audio file.
-              </p>
-
-              <button
-                className="mt-5 rounded-md bg-cue-action px-4 py-2 text-sm font-semibold text-white hover:bg-cue-actionDark"
-                type="button"
-                onClick={() => void handlePickTrack()}
-              >
-                Choose Audio File
-              </button>
-
-          <div className="mt-5 rounded-md border border-cue-line bg-cue-panel p-4">
-            <div className="text-sm font-semibold">{track?.fileName ?? "No track loaded"}</div>
-            <div className="mt-1 break-all text-xs text-cue-muted">{track?.filePath ?? "Select a local MP3, WAV, or M4A."}</div>
-            <div className="mt-4 h-3 overflow-hidden rounded-full bg-white">
-              <div
-                className="h-full rounded-full bg-cue-ok transition-[width]"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <div className="mt-2 flex justify-between text-xs text-cue-muted">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(track?.durationSeconds ?? 0)}</span>
-            </div>
           </div>
 
-          <div className={["mt-5 grid gap-3", isLiveMode ? "grid-cols-2" : "sm:grid-cols-4"].join(" ")}>
+          <div className="flex items-center justify-center gap-3">
+            <button className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-sm font-semibold hover:bg-cue-panel disabled:opacity-45" type="button" disabled={!track} onClick={() => void handleRestart()}>
+              <RotateCcw className="size-5" aria-hidden="true" />
+              Restart
+            </button>
+            <button className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-sm font-semibold hover:bg-cue-panel disabled:opacity-45" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(-1)}>
+              <SkipBack className="size-5" aria-hidden="true" />
+              Previous
+            </button>
             <button
-              className="rounded-md bg-cue-action px-4 py-3 text-sm font-semibold text-white hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
+              className="flex size-20 items-center justify-center rounded-full bg-cue-action text-white shadow-lg transition hover:bg-cue-actionDark disabled:cursor-not-allowed disabled:opacity-45"
               type="button"
               disabled={!track}
               onClick={() => void handlePlayPause()}
+              title={isPlaying ? "Pause" : "Play"}
             >
-              {status === "playing" || status === "fading" ? "Pause" : "Play"}
+              {isPlaying ? <Pause className="size-9 fill-current" aria-hidden="true" /> : <Play className="ml-1 size-9 fill-current" aria-hidden="true" />}
             </button>
-            <button
-              className="rounded-md border border-cue-line px-4 py-3 text-sm font-semibold hover:bg-cue-panel disabled:cursor-not-allowed disabled:opacity-45"
-              type="button"
-              disabled={!track}
-              onClick={() => void handleStop()}
-            >
+            <button className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-sm font-semibold hover:bg-cue-panel disabled:opacity-45" type="button" disabled={scheduleQueue.length === 0} onClick={() => void playQueueOffset(1)}>
+              <SkipForward className="size-5" aria-hidden="true" />
+              Next
+            </button>
+            <button className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-md border border-cue-line bg-white text-sm font-semibold hover:bg-cue-panel disabled:opacity-45" type="button" disabled={!track} onClick={() => void handleStop()}>
+              <Square className="size-5 fill-current" aria-hidden="true" />
               Stop
             </button>
-            <button
-              className="rounded-md border border-cue-line px-4 py-3 text-sm font-semibold hover:bg-cue-panel disabled:cursor-not-allowed disabled:opacity-45"
-              type="button"
-              disabled={!track}
-              onClick={() => void handleRestart()}
-            >
-              Restart
-            </button>
-            <button
-              className="rounded-md border border-cue-line px-4 py-3 text-sm font-semibold hover:bg-cue-panel disabled:cursor-not-allowed disabled:opacity-45"
-              type="button"
-              disabled={!track || status !== "playing"}
-              onClick={() => void handleFadeOut()}
-            >
-              Fade Out
-            </button>
           </div>
 
-          <div className={["mt-5 grid gap-5", isLiveMode ? "grid-cols-1" : "sm:grid-cols-2"].join(" ")}>
-            <label className="block text-sm font-medium">
-              Fade duration
-              <select
-                className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2"
-                value={fadeSeconds}
-                onChange={(event) => setFadeSeconds(Number(event.target.value))}
-              >
-                <option value={3}>3 seconds</option>
-                <option value={5}>5 seconds</option>
-                <option value={8}>8 seconds</option>
-              </select>
-            </label>
-
-            <label className="block text-sm font-medium">
-              Playback Volume: {volume}%
-              <input
-                className="mt-3 w-full accent-cue-action"
-                min={0}
-                max={100}
-                type="range"
-                value={volume}
-                onChange={(event) => setVolume(Number(event.target.value))}
-              />
-              <button
-                className="mt-2 rounded-md border border-cue-line px-3 py-1.5 text-xs font-semibold hover:bg-cue-panel"
-                type="button"
-                onClick={() => setVolume(100)}
-              >
+          <div className="grid gap-4 border-cue-line xl:grid-cols-[150px_1fr] xl:border-l xl:pl-6">
+            <div>
+              <label className="block text-sm font-medium">
+                Fade Out
+                <select
+                  className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
+                  value={fadeSeconds}
+                  onChange={(event) => setFadeSeconds(Number(event.target.value))}
+                >
+                  {fadeOptions.map((seconds) => (
+                    <option key={seconds} value={seconds}>{seconds} sec</option>
+                  ))}
+                </select>
+              </label>
+              <button className={buttonClass("secondary") + " mt-2 w-full"} type="button" disabled={!track || status !== "playing"} onClick={() => void handleFadeOut()}>
+                Fade Out
+              </button>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-cue-action">
+                Volume
+                <div className="mt-4 flex items-center gap-3">
+                  <Volume2 className="size-5 text-cue-ink" aria-hidden="true" />
+                  <input
+                    className="w-full accent-cue-action"
+                    min={0}
+                    max={100}
+                    type="range"
+                    value={volume}
+                    onChange={(event) => setVolume(Number(event.target.value))}
+                  />
+                  <span className="w-12 text-right text-sm tabular-nums text-cue-ink">{volume}%</span>
+                </div>
+              </label>
+              <button className={buttonClass("secondary") + " mt-2"} type="button" onClick={() => setVolume(100)}>
                 Reset to 100%
               </button>
-            </label>
-          </div>
-
-          {volume < 80 && (
-            <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-cue-warm">
-              Board should control normal level. Use this only for loud or quiet files.
-            </div>
-          )}
-
-          <div className="mt-5 rounded-md border border-cue-line px-3 py-2 text-sm text-cue-muted">
-            Status: <span className="font-semibold text-cue-ink">{status}</span>. {message}
-          </div>
+              {volume < 80 && (
+                <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-cue-warm">
+                  Board should control normal level. Use this only for loud or quiet files.
+                </div>
+              )}
             </div>
           </div>
         </div>
-      </section>
+        <div className="mx-auto mt-2 max-w-[1600px] truncate rounded-md border border-cue-line bg-cue-panel px-3 py-2 text-sm text-cue-muted">
+          Status: <span className="font-semibold text-cue-ink">{status}</span>. {message}
+        </div>
+      </footer>
 
+      {isSettingsOpen && !isLiveMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg border border-cue-line bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-cue-line px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold">Settings</h2>
+                <p className="text-sm text-cue-muted">Library, scan options, and mixer output.</p>
+              </div>
+              <button className={iconButtonClass()} type="button" title="Close settings" onClick={() => setIsSettingsOpen(false)}>
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="grid gap-6 p-5 md:grid-cols-2">
+              <section>
+                <h3 className="font-semibold">Master Library</h3>
+                <div className="mt-3 rounded-md border border-cue-line bg-cue-panel p-3">
+                  <div className="text-xs font-semibold uppercase text-cue-muted">Folder</div>
+                  <div className="mt-1 break-all text-sm">{settings?.masterFolderPath || "No folder selected"}</div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className={buttonClass("primary")} type="button" disabled={isScanning} onClick={() => void handleChooseMasterFolder()}>
+                    <Folder className="size-4" aria-hidden="true" />
+                    Change Folder
+                  </button>
+                  <button className={buttonClass("secondary")} type="button" disabled={isScanning || !settings?.masterFolderPath} onClick={() => void handleRescan()}>
+                    <RefreshCw className={["size-4", isScanning ? "animate-spin" : ""].join(" ")} aria-hidden="true" />
+                    Rescan
+                  </button>
+                </div>
+                <div className="mt-3 text-sm text-cue-muted">
+                  <div>Tracks indexed: <span className="font-semibold text-cue-ink">{libraryIndex.tracks.length}</span></div>
+                  <div>Last scanned: <span className="font-semibold text-cue-ink">{formatScanTime(settings?.lastScannedAt ?? libraryIndex.scannedAt)}</span></div>
+                </div>
+                <div className="mt-4 space-y-3 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input className="size-4 accent-cue-action" type="checkbox" checked={settings?.includeInbox ?? false} onChange={(event) => void handleIncludeToggle("includeInbox", event.target.checked)} />
+                    Include Inbox
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input className="size-4 accent-cue-action" type="checkbox" checked={settings?.includeArchive ?? false} onChange={(event) => void handleIncludeToggle("includeArchive", event.target.checked)} />
+                    Include Archive
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input className="size-4 accent-cue-action" type="checkbox" checked={settings?.includeDoNotUse ?? false} onChange={(event) => void handleIncludeToggle("includeDoNotUse", event.target.checked)} />
+                    Include Do Not Use
+                  </label>
+                </div>
+              </section>
+
+              <section>
+                <h3 className="font-semibold">Output</h3>
+                <label className="mt-3 block text-sm font-medium" htmlFor="output-device">
+                  Audio output device
+                  <select
+                    id="output-device"
+                    className="mt-2 w-full rounded-md border border-cue-line bg-white px-3 py-2 text-sm"
+                    value={selectedDeviceId}
+                    onChange={(event) => void handleDeviceChange(event.target.value)}
+                  >
+                    {devices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {missingSelectedDevice && (
+                  <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-cue-warm">
+                    The saved output device is missing. ServiceCue has fallen back to the system default.
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className={buttonClass("primary")} type="button" onClick={() => void handleTestOutput()}>
+                    <Volume2 className="size-4" aria-hidden="true" />
+                    Test Output
+                  </button>
+                  <button className={buttonClass("secondary")} type="button" onClick={() => void refreshDevices()}>
+                    <RefreshCw className="size-4" aria-hidden="true" />
+                    Refresh Devices
+                  </button>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

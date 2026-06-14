@@ -17,6 +17,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^3.0.0",
+    "lucide-react": "^1.18.0",
     "music-metadata": "^11.13.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
@@ -39,6 +40,7 @@
   "build": {
     "appId": "org.servicecue.app",
     "productName": "ServiceCue",
+    "icon": "build/icon.png",
     "directories": {
       "output": "release"
     },
