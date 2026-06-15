@@ -1497,8 +1497,8 @@ export function App() {
             </div>
           )}
 
-          <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1 2xl:mt-4 2xl:space-y-3">
-            {orderedSections.map((section) => {
+          <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pb-20 pr-1 2xl:mt-4 2xl:space-y-3 2xl:pb-24">
+            {orderedSections.map((section, sectionIndex) => {
               const tone = sectionTone(section.type);
               const visibleItems = section.items
                 .slice()
@@ -1507,6 +1507,7 @@ export function App() {
               const playThroughActive = playThroughSectionId === section.id;
               const isCollapsed = collapsedSectionIds.has(section.id);
               const isExpanded = !isCollapsed || dragOverSectionId === section.id;
+              const openMenuUpward = sectionIndex >= orderedSections.length - 2;
 
               return (
                 <div
@@ -1581,7 +1582,12 @@ export function App() {
                             <MoreVertical className="size-4" aria-hidden="true" />
                           </button>
                           {openSectionMenuId === section.id && (
-                            <div className="absolute right-0 top-10 z-50 w-44 rounded-md border border-cue-line bg-white p-1 shadow-lg">
+                            <div
+                              className={[
+                                "absolute right-0 z-50 w-44 rounded-md border border-cue-line bg-white p-1 shadow-lg",
+                                openMenuUpward ? "bottom-10" : "top-10",
+                              ].join(" ")}
+                            >
                               <button className={buttonClass("ghost") + " w-full justify-start"} type="button" onClick={() => startEditingSection(section)}>
                                 Rename section
                               </button>
