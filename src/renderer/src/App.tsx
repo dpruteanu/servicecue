@@ -177,8 +177,6 @@ function sectionTone(type: ScheduleSection["type"]) {
     return {
       icon: "text-emerald-700",
       header: "border-emerald-200 bg-emerald-50",
-      tabActive: "border-emerald-500 bg-emerald-50 text-emerald-800",
-      tabIdle: "border-cue-line bg-white text-cue-ink hover:border-emerald-300 hover:bg-emerald-50",
       rail: "bg-emerald-500",
       title: "text-emerald-800",
     };
@@ -188,8 +186,6 @@ function sectionTone(type: ScheduleSection["type"]) {
     return {
       icon: "text-amber-700",
       header: "border-amber-200 bg-amber-50",
-      tabActive: "border-amber-500 bg-amber-50 text-amber-800",
-      tabIdle: "border-cue-line bg-white text-cue-ink hover:border-amber-300 hover:bg-amber-50",
       rail: "bg-amber-500",
       title: "text-amber-800",
     };
@@ -199,8 +195,6 @@ function sectionTone(type: ScheduleSection["type"]) {
     return {
       icon: "text-violet-700",
       header: "border-violet-200 bg-violet-50",
-      tabActive: "border-violet-500 bg-violet-50 text-violet-800",
-      tabIdle: "border-cue-line bg-white text-cue-ink hover:border-violet-300 hover:bg-violet-50",
       rail: "bg-violet-500",
       title: "text-violet-800",
     };
@@ -210,8 +204,6 @@ function sectionTone(type: ScheduleSection["type"]) {
     return {
       icon: "text-sky-700",
       header: "border-sky-200 bg-sky-50",
-      tabActive: "border-sky-500 bg-sky-50 text-sky-800",
-      tabIdle: "border-cue-line bg-white text-cue-ink hover:border-sky-300 hover:bg-sky-50",
       rail: "bg-sky-500",
       title: "text-sky-800",
     };
@@ -220,8 +212,6 @@ function sectionTone(type: ScheduleSection["type"]) {
   return {
     icon: "text-cue-action",
     header: "border-blue-200 bg-blue-50",
-    tabActive: "border-cue-action bg-blue-50 text-cue-actionDark",
-    tabIdle: "border-cue-line bg-white text-cue-ink hover:border-blue-300 hover:bg-blue-50",
     rail: "bg-cue-action",
     title: "text-cue-actionDark",
   };
@@ -299,6 +289,7 @@ export function App() {
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionName, setEditingSectionName] = useState("");
   const [openSectionMenuId, setOpenSectionMenuId] = useState<string | null>(null);
+  const [collapsedSectionIds, setCollapsedSectionIds] = useState<Set<string>>(() => new Set());
   const [playThroughSectionId, setPlayThroughSectionId] = useState<string | null>(null);
   const [liveRemovedItemIds, setLiveRemovedItemIds] = useState<Set<string>>(() => new Set());
   const [lastLiveRemovedItem, setLastLiveRemovedItem] = useState<{ itemId: string; title: string } | null>(null);
@@ -343,9 +334,6 @@ export function App() {
 
     return Math.min(100, (currentTime / track.durationSeconds) * 100);
   }, [currentTime, track?.durationSeconds]);
-
-  const activeSection = orderedSections.find((section) => section.id === activeSectionId) ?? orderedSections[0];
-  const visibleSections = activeSection ? [activeSection] : [];
 
   const scheduleQueue = useMemo(() => orderedSections.flatMap((section) =>
     section.items
@@ -1070,6 +1058,21 @@ export function App() {
     setLastLiveRemovedItem(null);
   }
 
+  function toggleSectionCollapsed(sectionId: string) {
+    setSelectedSectionId(sectionId);
+    setCollapsedSectionIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+
+      if (nextIds.has(sectionId)) {
+        nextIds.delete(sectionId);
+      } else {
+        nextIds.add(sectionId);
+      }
+
+      return nextIds;
+    });
+  }
+
   function handleTrackEnded(itemId?: string) {
     setStatus("stopped");
     setCurrentTime(0);
@@ -1485,39 +1488,6 @@ export function App() {
             )}
           </div>
 
-          {orderedSections.length > 0 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-              {orderedSections.map((section) => {
-                const tone = sectionTone(section.type);
-                const visibleItemCount = section.items.filter((item) => !isLiveMode || !liveRemovedItemIds.has(item.id)).length;
-                const isActive = section.id === activeSectionId;
-
-                return (
-                  <button
-                    key={section.id}
-                    className={[
-                      "inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition",
-                      isActive ? tone.tabActive : tone.tabIdle,
-                      dragOverSectionId === section.id ? "ring-2 ring-cue-action/20" : "",
-                    ].join(" ")}
-                    type="button"
-                    onClick={() => setSelectedSectionId(section.id)}
-                    onDragLeave={isLiveMode ? undefined : () => setDragOverSectionId((current) => current === section.id ? null : current)}
-                    onDragOver={isLiveMode ? undefined : (event) => handleSectionDragOver(event, section.id)}
-                    onDrop={isLiveMode ? undefined : (event) => handleSectionDrop(event, section.id)}
-                    title={`Show ${section.name}`}
-                  >
-                    <span className={tone.icon}>{sectionIcon(section.type)}</span>
-                    <span>{section.name}</span>
-                    <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs text-cue-muted">
-                      {visibleItemCount}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {isLiveMode && lastLiveRemovedItem && (
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               <span>Removed {lastLiveRemovedItem.title} from this run.</span>
@@ -1528,13 +1498,15 @@ export function App() {
           )}
 
           <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1 2xl:mt-4 2xl:space-y-3">
-            {visibleSections.map((section) => {
+            {orderedSections.map((section) => {
               const tone = sectionTone(section.type);
               const visibleItems = section.items
                 .slice()
                 .sort((a, b) => a.sortOrder - b.sortOrder)
                 .filter((item) => !isLiveMode || !liveRemovedItemIds.has(item.id));
               const playThroughActive = playThroughSectionId === section.id;
+              const isCollapsed = collapsedSectionIds.has(section.id);
+              const isExpanded = !isCollapsed || dragOverSectionId === section.id;
 
               return (
                 <div
@@ -1550,10 +1522,10 @@ export function App() {
                   onDrop={isLiveMode ? undefined : (event) => handleSectionDrop(event, section.id)}
                 >
                   <div className={["flex items-center justify-between gap-2 border-b px-3 py-2 2xl:gap-3 2xl:px-4 2xl:py-3", tone.header].join(" ")}>
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className={["h-8 w-1 rounded-full", tone.rail].join(" ")} aria-hidden="true" />
-                      <div className={tone.icon}>{sectionIcon(section.type)}</div>
-                      {editingSectionId === section.id ? (
+                    {editingSectionId === section.id ? (
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className={["h-8 w-1 rounded-full", tone.rail].join(" ")} aria-hidden="true" />
+                        <div className={tone.icon}>{sectionIcon(section.type)}</div>
                         <input
                           className="min-w-0 rounded-md border border-cue-line px-2 py-1 text-sm font-semibold"
                           value={editingSectionName}
@@ -1565,10 +1537,21 @@ export function App() {
                             if (event.key === "Escape") setEditingSectionId(null);
                           }}
                         />
-                      ) : (
-                        <div className={["min-w-0 truncate text-base font-semibold", tone.title].join(" ")}>{section.name}</div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <button
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                        type="button"
+                        aria-expanded={isExpanded}
+                        onClick={() => toggleSectionCollapsed(section.id)}
+                        title={`${isExpanded ? "Collapse" : "Expand"} ${section.name}`}
+                      >
+                        <ChevronRight className={["size-4 shrink-0 text-cue-muted transition-transform", isExpanded ? "rotate-90" : ""].join(" ")} aria-hidden="true" />
+                        <span className={["h-8 w-1 rounded-full", tone.rail].join(" ")} aria-hidden="true" />
+                        <span className={tone.icon}>{sectionIcon(section.type)}</span>
+                        <span className={["min-w-0 truncate text-base font-semibold", tone.title].join(" ")}>{section.name}</span>
+                      </button>
+                    )}
                     <div className="relative flex items-center gap-2">
                       <span className="text-xs font-semibold text-cue-muted 2xl:text-sm">{visibleItems.length} {visibleItems.length === 1 ? "song" : "songs"}</span>
                       <button
@@ -1617,89 +1600,91 @@ export function App() {
                     </div>
                   </div>
 
-                  <div className="divide-y divide-cue-line px-3 py-1 2xl:px-4">
-                    {visibleItems.map((item, index) => {
-                      const indexedTrack = findTrackById(libraryIndex, item.trackId);
-                      const title = item.customTitle ?? indexedTrack?.displayTitle ?? item.trackId;
-                      const duration = indexedTrack?.durationSeconds;
-                      const isMissing = item.status === "missing" || !indexedTrack;
-                      const isLoaded = loadedScheduleItemId === item.id;
+                  {isExpanded && (
+                    <div className="divide-y divide-cue-line px-3 py-1 2xl:px-4">
+                      {visibleItems.map((item, index) => {
+                        const indexedTrack = findTrackById(libraryIndex, item.trackId);
+                        const title = item.customTitle ?? indexedTrack?.displayTitle ?? item.trackId;
+                        const duration = indexedTrack?.durationSeconds;
+                        const isMissing = item.status === "missing" || !indexedTrack;
+                        const isLoaded = loadedScheduleItemId === item.id;
 
-                      return (
-                        <div
-                          key={item.id}
-                          className={[
-                            "grid grid-cols-[20px_24px_minmax(0,1fr)_48px_76px] items-center gap-1.5 py-1.5 text-sm 2xl:grid-cols-[28px_34px_minmax(0,1fr)_64px_86px] 2xl:gap-2 2xl:py-2",
-                            !isLiveMode ? "cursor-grab active:cursor-grabbing" : "",
-                            isMissing ? "bg-amber-50 text-cue-warm" : "",
-                            dragOverItemId === item.id ? "rounded-md bg-blue-50 ring-2 ring-blue-100" : "",
-                          ].join(" ")}
-                          draggable={!isLiveMode}
-                          onDragEnd={() => {
-                            setDragOverItemId(null);
-                            setDragOverSectionId(null);
-                          }}
-                          onDragOver={isLiveMode ? undefined : (event) => handleScheduleItemDragOver(event, section.id, item.id)}
-                          onDragStart={isLiveMode ? undefined : (event) => handleScheduleItemDragStart(event, section.id, item.id)}
-                          onDrop={isLiveMode ? undefined : (event) => handleScheduleItemDrop(event, section.id, item.id)}
-                        >
-                          <GripVertical className={["size-4", isLiveMode ? "opacity-0" : "text-cue-muted"].join(" ")} aria-hidden="true" />
-                          <div className="tabular-nums text-cue-muted">{index + 1}</div>
-                          <div className="min-w-0">
-                            <div className={["truncate font-medium", isLoaded ? tone.title : ""].join(" ")}>{title}</div>
-                            {isMissing && <div className="text-xs font-semibold">Missing file</div>}
+                        return (
+                          <div
+                            key={item.id}
+                            className={[
+                              "grid grid-cols-[20px_24px_minmax(0,1fr)_48px_76px] items-center gap-1.5 py-1.5 text-sm 2xl:grid-cols-[28px_34px_minmax(0,1fr)_64px_86px] 2xl:gap-2 2xl:py-2",
+                              !isLiveMode ? "cursor-grab active:cursor-grabbing" : "",
+                              isMissing ? "bg-amber-50 text-cue-warm" : "",
+                              dragOverItemId === item.id ? "rounded-md bg-blue-50 ring-2 ring-blue-100" : "",
+                            ].join(" ")}
+                            draggable={!isLiveMode}
+                            onDragEnd={() => {
+                              setDragOverItemId(null);
+                              setDragOverSectionId(null);
+                            }}
+                            onDragOver={isLiveMode ? undefined : (event) => handleScheduleItemDragOver(event, section.id, item.id)}
+                            onDragStart={isLiveMode ? undefined : (event) => handleScheduleItemDragStart(event, section.id, item.id)}
+                            onDrop={isLiveMode ? undefined : (event) => handleScheduleItemDrop(event, section.id, item.id)}
+                          >
+                            <GripVertical className={["size-4", isLiveMode ? "opacity-0" : "text-cue-muted"].join(" ")} aria-hidden="true" />
+                            <div className="tabular-nums text-cue-muted">{index + 1}</div>
+                            <div className="min-w-0">
+                              <div className={["truncate font-medium", isLoaded ? tone.title : ""].join(" ")}>{title}</div>
+                              {isMissing && <div className="text-xs font-semibold">Missing file</div>}
+                            </div>
+                            <div className="text-right tabular-nums text-cue-ink">{isMissing ? "--" : formatTime(duration ?? 0)}</div>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                className={iconButtonClass(isLoaded)}
+                                type="button"
+                                title="Load track"
+                                disabled={isMissing}
+                                onClick={() => void loadScheduleItem(item)}
+                              >
+                                <Play className="size-4 fill-current" aria-hidden="true" />
+                              </button>
+                              {isMissing && !isLiveMode && (
+                                <button
+                                  className={iconButtonClass()}
+                                  type="button"
+                                  title="Locate file"
+                                  onClick={() => void locateScheduleItem(section.id, item.id)}
+                                >
+                                  <Folder className="size-4" aria-hidden="true" />
+                                </button>
+                              )}
+                              {isLiveMode && !isMissing && (
+                                <button
+                                  className="inline-flex size-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-800 transition hover:bg-amber-100"
+                                  type="button"
+                                  title="Remove from current run"
+                                  onClick={() => void removeFromCurrentRun(item, title)}
+                                >
+                                  <X className="size-4" aria-hidden="true" />
+                                </button>
+                              )}
+                              {!isLiveMode && !isMissing && (
+                                <button
+                                  className="inline-flex size-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
+                                  type="button"
+                                  title="Remove track"
+                                  onClick={() => removeScheduleItem(section.id, item.id)}
+                                >
+                                  <X className="size-4" aria-hidden="true" />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-right tabular-nums text-cue-ink">{isMissing ? "--" : formatTime(duration ?? 0)}</div>
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              className={iconButtonClass(isLoaded)}
-                              type="button"
-                              title="Load track"
-                              disabled={isMissing}
-                              onClick={() => void loadScheduleItem(item)}
-                            >
-                              <Play className="size-4 fill-current" aria-hidden="true" />
-                            </button>
-                            {isMissing && !isLiveMode && (
-                              <button
-                                className={iconButtonClass()}
-                                type="button"
-                                title="Locate file"
-                                onClick={() => void locateScheduleItem(section.id, item.id)}
-                              >
-                                <Folder className="size-4" aria-hidden="true" />
-                              </button>
-                            )}
-                            {isLiveMode && !isMissing && (
-                              <button
-                                className="inline-flex size-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-800 transition hover:bg-amber-100"
-                                type="button"
-                                title="Remove from current run"
-                                onClick={() => void removeFromCurrentRun(item, title)}
-                              >
-                                <X className="size-4" aria-hidden="true" />
-                              </button>
-                            )}
-                            {!isLiveMode && !isMissing && (
-                              <button
-                                className="inline-flex size-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
-                                type="button"
-                                title="Remove track"
-                                onClick={() => removeScheduleItem(section.id, item.id)}
-                              >
-                                <X className="size-4" aria-hidden="true" />
-                              </button>
-                            )}
-                          </div>
+                        );
+                      })}
+                      {visibleItems.length === 0 && (
+                        <div className="rounded-md border border-dashed border-cue-line px-3 py-2 text-sm text-cue-muted 2xl:py-3">
+                          No songs in this section.
                         </div>
-                      );
-                    })}
-                    {visibleItems.length === 0 && (
-                      <div className="rounded-md border border-dashed border-cue-line px-3 py-2 text-sm text-cue-muted 2xl:py-3">
-                        No songs in this section.
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

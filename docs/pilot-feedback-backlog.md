@@ -23,11 +23,11 @@ Files:
 
 - `src/renderer/src/audio/ServiceCueAudioPlayer.ts`
 
-### P1 - Section Tabs Instead Of Long Scrolling
+### P1 - Collapsible Sections Instead Of Long Scrolling
 
-Reported: volunteers prefer clicking a section such as Youth, Choir, Solo, or Guest instead of scanning a vertical stack.
+Reported: volunteers need the section order to stay visually obvious, but the long vertical stack can become cluttered.
 
-Status: Implemented. The schedule panel now uses section tabs and renders the active section body instead of a full vertical stack. Tabs also work as drop targets in Setup Mode.
+Status: Implemented. The schedule panel now keeps sections in vertical service order and lets operators click a section heading to expand or collapse it, similar to an FAQ accordion.
 
 Goal:
 
@@ -35,11 +35,12 @@ Goal:
 - Make the current service section obvious.
 - Keep drag/reorder behavior in Setup Mode.
 
-Proposed approach:
+Implemented approach:
 
-- Add a section tab/segmented row in the schedule panel.
-- Show one active section body at a time in compact Setup/Live layouts.
-- Consider showing all sections only on wide desktop layouts if it remains readable.
+- Keep all sections visible in service order.
+- Use stronger, color-coded section heading bars.
+- Collapse or expand each section body from the heading.
+- Keep section bodies as drag/drop targets when expanded, and section cards as drop targets when collapsed.
 
 Files:
 
