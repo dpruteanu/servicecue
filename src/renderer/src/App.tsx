@@ -1512,7 +1512,7 @@ export function App() {
                 <div
                   key={section.id}
                   className={[
-                    "overflow-hidden rounded-md border bg-white transition-colors",
+                    "relative rounded-md border bg-white transition-colors",
                     dragOverSectionId === section.id
                       ? "border-cue-action bg-blue-50"
                       : "border-cue-line",
@@ -1581,7 +1581,7 @@ export function App() {
                             <MoreVertical className="size-4" aria-hidden="true" />
                           </button>
                           {openSectionMenuId === section.id && (
-                            <div className="absolute right-0 top-10 z-10 w-44 rounded-md border border-cue-line bg-white p-1 shadow-lg">
+                            <div className="absolute right-0 top-10 z-50 w-44 rounded-md border border-cue-line bg-white p-1 shadow-lg">
                               <button className={buttonClass("ghost") + " w-full justify-start"} type="button" onClick={() => startEditingSection(section)}>
                                 Rename section
                               </button>
