@@ -293,6 +293,7 @@ export function App() {
   const [playThroughSectionId, setPlayThroughSectionId] = useState<string | null>(null);
   const [liveRemovedItemIds, setLiveRemovedItemIds] = useState<Set<string>>(() => new Set());
   const [lastLiveRemovedItem, setLastLiveRemovedItem] = useState<{ itemId: string; title: string } | null>(null);
+  const [pendingLiveRemoveItemId, setPendingLiveRemoveItemId] = useState<string | null>(null);
   const [message, setMessage] = useState("Choose a master folder, build a schedule, then load a track.");
   const isLiveMode = mode === "live";
   const isPlaying = status === "playing" || status === "fading";
@@ -395,6 +396,7 @@ export function App() {
     if (!isLiveMode) {
       setLiveRemovedItemIds(new Set());
       setLastLiveRemovedItem(null);
+      setPendingLiveRemoveItemId(null);
     }
   }, [isLiveMode]);
 
@@ -1035,6 +1037,7 @@ export function App() {
   async function removeFromCurrentRun(item: ScheduleItem, title: string) {
     setLiveRemovedItemIds((currentIds) => new Set(currentIds).add(item.id));
     setLastLiveRemovedItem({ itemId: item.id, title });
+    setPendingLiveRemoveItemId(null);
 
     if (loadedScheduleItemId === item.id) {
       await handleStop();
@@ -1042,6 +1045,11 @@ export function App() {
     }
 
     setMessage(`Removed ${title} from this Live run. The saved schedule was not changed.`);
+  }
+
+  function requestLiveRemove(item: ScheduleItem, title: string) {
+    setPendingLiveRemoveItemId(item.id);
+    setMessage(`Confirm removing ${title} from this Live run.`);
   }
 
   function undoLiveRemove() {
@@ -1618,6 +1626,9 @@ export function App() {
                         return (
                           <div
                             key={item.id}
+                            className={pendingLiveRemoveItemId === item.id ? "rounded-md bg-amber-50" : ""}
+                          >
+                            <div
                             className={[
                               "grid grid-cols-[20px_24px_minmax(0,1fr)_48px_76px] items-center gap-1.5 py-1.5 text-sm 2xl:grid-cols-[28px_34px_minmax(0,1fr)_64px_86px] 2xl:gap-2 2xl:py-2",
                               !isLiveMode ? "cursor-grab active:cursor-grabbing" : "",
@@ -1665,7 +1676,7 @@ export function App() {
                                   className="inline-flex size-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-800 transition hover:bg-amber-100"
                                   type="button"
                                   title="Remove from current run"
-                                  onClick={() => void removeFromCurrentRun(item, title)}
+                                  onClick={() => requestLiveRemove(item, title)}
                                 >
                                   <X className="size-4" aria-hidden="true" />
                                 </button>
@@ -1681,6 +1692,28 @@ export function App() {
                                 </button>
                               )}
                             </div>
+                            </div>
+                            {isLiveMode && !isMissing && pendingLiveRemoveItemId === item.id && (
+                              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                                <span className="font-medium">Remove {title} from this Live run?</span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    className="inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-100"
+                                    type="button"
+                                    onClick={() => void removeFromCurrentRun(item, title)}
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    className="inline-flex items-center justify-center rounded-md border border-cue-line bg-white px-3 py-1.5 text-sm font-semibold text-cue-ink hover:bg-cue-panel"
+                                    type="button"
+                                    onClick={() => setPendingLiveRemoveItemId(null)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
