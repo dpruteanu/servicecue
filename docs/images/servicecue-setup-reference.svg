@@ -1,147 +1,81 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="860" viewBox="0 0 1440 860" role="img" aria-labelledby="title desc">
-  <title id="title">ServiceCue Setup Mode Reference</title>
-  <desc id="desc">A reference image showing ServiceCue setup mode with a library panel, collapsible schedule sections, guest import, and the bottom player.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1212" viewBox="0 0 2048 1212" role="img" aria-labelledby="title desc">
+  <title id="title">ServiceCue Setup Mode screenshot reference</title>
+  <desc id="desc">ServiceCue setup mode showing the library, accordion schedule sections, guest import panel, and bottom player.</desc>
   <defs>
     <style>
-      .bg { fill: #f6f8fb; }
-      .panel { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
-      .line { stroke: #d8dee8; stroke-width: 1.5; }
-      .ink { fill: #172033; font-family: Inter, Arial, sans-serif; font-weight: 700; }
-      .text { fill: #172033; font-family: Inter, Arial, sans-serif; }
-      .muted { fill: #64748b; font-family: Inter, Arial, sans-serif; }
-      .blue { fill: #245bdb; }
-      .blue-text { fill: #245bdb; font-family: Inter, Arial, sans-serif; font-weight: 700; }
-      .button { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
-      .section-youth { fill: #ecfdf5; stroke: #a7f3d0; }
-      .section-choir { fill: #fffbeb; stroke: #fde68a; }
-      .section-solo { fill: #f5f3ff; stroke: #ddd6fe; }
-      .section-other { fill: #eff6ff; stroke: #bfdbfe; }
-      .row { fill: #ffffff; stroke: #d8dee8; }
+      .bg{fill:#f6f8fb}.white{fill:#fff}.panel{fill:#fff;stroke:#d5deea;stroke-width:1.5}.line{stroke:#d8dee8;stroke-width:1.5}.ink{fill:#172033;font-family:Inter,Arial,sans-serif;font-weight:700}.text{fill:#172033;font-family:Inter,Arial,sans-serif}.muted{fill:#64748b;font-family:Inter,Arial,sans-serif}.blue{fill:#245bdb}.blueText{fill:#245bdb;font-family:Inter,Arial,sans-serif;font-weight:700}.btn{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}.input{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}.ghost{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.5}.dash{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;stroke-dasharray:6 5}.y{fill:#ecfdf5;stroke:#a7f3d0}.c{fill:#fffbeb;stroke:#fde68a}.s{fill:#f5f3ff;stroke:#ddd6fe}.g{fill:#f0f9ff;stroke:#bae6fd}.o{fill:#eff6ff;stroke:#bfdbfe}.small{font-size:14}.med{font-size:16}.large{font-size:22}.xl{font-size:26}
     </style>
   </defs>
-  <rect class="bg" width="1440" height="860" />
-  <rect fill="#ffffff" width="1440" height="76" />
-  <line class="line" x1="0" y1="76" x2="1440" y2="76" />
-  <rect class="blue" x="28" y="20" width="40" height="40" rx="10" />
-  <text class="ink" x="82" y="37" font-size="22">ServiceCue</text>
-  <text class="muted" x="82" y="58" font-size="13">Local backing-track player for church services</text>
-  <rect class="button" x="625" y="18" width="74" height="42" rx="7" />
-  <rect class="blue" x="629" y="22" width="66" height="34" rx="5" />
-  <text fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="700" x="646" y="44" font-size="14">Setup</text>
-  <rect class="button" x="699" y="18" width="74" height="42" rx="7" />
-  <text class="muted" x="724" y="44" font-size="14" font-weight="700">Live</text>
-  <rect class="button" x="790" y="18" width="260" height="42" rx="7" />
-  <text class="text" x="807" y="44" font-size="14">Sunday Service - 2026-06-15</text>
-  <rect class="button" x="1064" y="18" width="82" height="42" rx="7" />
-  <text class="ink" x="1094" y="44" font-size="14">Save</text>
-  <rect class="button" x="1158" y="18" width="82" height="42" rx="7" />
-  <text class="ink" x="1188" y="44" font-size="14">Load</text>
-  <rect class="button" x="1252" y="18" width="136" height="42" rx="7" />
-  <text class="ink" x="1280" y="44" font-size="14">Import Guest</text>
-  <g transform="translate(28,102)">
-    <rect class="panel" width="390" height="590" rx="7" />
-    <text class="ink" x="22" y="42" font-size="20">Library</text>
-    <text class="muted" x="326" y="42" font-size="13" font-weight="700">1243 tracks</text>
-    <rect class="button" x="22" y="68" width="346" height="46" rx="7" />
-    <text class="muted" x="50" y="97" font-size="14">D:\Church Media\Negativ Library</text>
-    <rect class="button" x="22" y="126" width="346" height="46" rx="7" />
-    <text class="muted" x="50" y="155" font-size="14">Search songs, groups, or filename</text>
-    <rect class="blue" x="22" y="184" width="54" height="36" rx="7" />
-    <text fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="700" x="42" y="207" font-size="13">All</text>
-    <g class="button">
-      <rect x="88" y="184" width="62" height="36" rx="7" />
-      <rect x="162" y="184" width="62" height="36" rx="7" />
-      <rect x="236" y="184" width="62" height="36" rx="7" />
-      <rect x="310" y="184" width="58" height="36" rx="7" />
-    </g>
-    <text class="ink" x="106" y="207" font-size="13">Youth</text>
-    <text class="ink" x="180" y="207" font-size="13">Choir</text>
-    <text class="ink" x="254" y="207" font-size="13">Solo</text>
-    <text class="ink" x="326" y="207" font-size="13">Other</text>
-    <text class="muted" x="32" y="255" font-size="12" font-weight="700">TITLE</text>
-    <text class="muted" x="220" y="255" font-size="12" font-weight="700">GROUP</text>
-    <text class="muted" x="320" y="255" font-size="12" font-weight="700">LENGTH</text>
-    <line class="line" x1="22" y1="266" x2="368" y2="266" />
-    <g font-size="14">
-      <text class="text" x="32" y="294">Hai lupta frate lupta</text><text class="muted" x="220" y="294">Youth</text><text class="text" x="326" y="294">4:15</text>
-      <line class="line" x1="22" y1="310" x2="368" y2="310" />
-      <text class="text" x="32" y="338">Fii binecuvantat</text><text class="muted" x="220" y="338">Youth</text><text class="text" x="326" y="338">3:48</text>
-      <line class="line" x1="22" y1="354" x2="368" y2="354" />
-      <text class="text" x="32" y="382">O cantare de marire</text><text class="muted" x="220" y="382">Choir</text><text class="text" x="326" y="382">5:21</text>
-      <line class="line" x1="22" y1="398" x2="368" y2="398" />
-      <text class="text" x="32" y="426">Nothing Else</text><text class="muted" x="220" y="426">Guest</text><text class="text" x="326" y="426">4:28</text>
-      <line class="line" x1="22" y1="442" x2="368" y2="442" />
-      <text class="text" x="32" y="470">Instrumental - Soft</text><text class="muted" x="220" y="470">Other</text><text class="text" x="326" y="470">3:30</text>
-    </g>
+  <rect class="bg" width="2048" height="1212"/>
+  <rect class="white" width="2048" height="122"/>
+  <line class="line" x1="0" y1="122" x2="2048" y2="122"/>
+  <rect class="blue" x="52" y="56" width="48" height="48" rx="10"/>
+  <text class="ink xl" x="112" y="78">ServiceCue</text>
+  <text class="muted med" x="112" y="104">Local backing-track player for church services</text>
+  <rect class="btn" x="1034" y="54" width="184" height="52" rx="7"/>
+  <rect class="blue" x="1040" y="60" width="92" height="40" rx="5"/>
+  <text fill="#fff" font-family="Inter,Arial,sans-serif" font-weight="700" x="1064" y="86" font-size="16">Setup</text>
+  <text class="muted med" font-weight="700" x="1154" y="86">Live</text>
+  <rect class="input" x="1232" y="58" width="380" height="42" rx="6"/>
+  <text class="text med" x="1252" y="84">Sunday Service - 2026-06-15</text>
+  <rect class="btn" x="1626" y="58" width="108" height="42" rx="6"/><text class="ink med" x="1666" y="84">Save</text>
+  <rect class="btn" x="1746" y="58" width="108" height="42" rx="6"/><text class="ink med" x="1786" y="84">Load</text>
+  <rect class="btn" x="1864" y="58" width="132" height="42" rx="6"/><text class="ink med" x="1902" y="84">Settings</text>
+
+  <g transform="translate(42,140)">
+    <rect class="panel" width="538" height="850" rx="6"/>
+    <text class="ink large" x="20" y="42">Library</text><text class="muted small" font-weight="700" x="464" y="42">6 tracks</text>
+    <rect class="ghost" x="20" y="68" width="498" height="62" rx="7"/>
+    <text class="muted med" x="56" y="106">/Users/dumitru/Downloads/ServiceCue-testmedia</text>
+    <rect class="input" x="20" y="142" width="498" height="46" rx="7"/>
+    <text class="muted med" x="60" y="171">Search songs, groups, or filename</text>
+    <rect class="blue" x="20" y="200" width="54" height="40" rx="7"/><text fill="#fff" font-family="Inter,Arial,sans-serif" font-weight="700" x="38" y="226" font-size="16">All</text>
+    <g class="btn"><rect x="82" y="200" width="78" height="40" rx="7"/><rect x="168" y="200" width="78" height="40" rx="7"/><rect x="254" y="200" width="78" height="40" rx="7"/><rect x="340" y="200" width="78" height="40" rx="7"/><rect x="426" y="200" width="92" height="40" rx="7"/></g>
+    <text class="ink med" x="108" y="226">Youth</text><text class="ink med" x="194" y="226">Choir</text><text class="ink med" x="284" y="226">Solo</text><text class="ink med" x="362" y="226">Guest</text><text class="ink med" x="454" y="226">Other</text>
+    <text class="muted small" font-weight="700" x="36" y="270">TITLE</text><text class="muted small" font-weight="700" x="314" y="270">GROUP</text><text class="muted small" font-weight="700" x="444" y="270">LENGTH</text>
+    <line class="line" x1="20" y1="286" x2="518" y2="286"/>
+    <rect fill="#eaf2ff" x="20" y="287" width="498" height="52"/>
+    <rect fill="#fff" stroke="#f59e0b" stroke-width="2" x="34" y="300" width="262" height="24" rx="3"/>
+    <text class="text med" x="36" y="320">Ce Nume Minunat</text><rect class="input" x="306" y="298" width="114" height="30" rx="5"/><text class="text small" x="318" y="318">Solo</text><text class="text med" x="452" y="320">3:12</text>
+    <g class="med"><text class="text" x="36" y="372">Ce Nume Minunat</text><rect class="input" x="306" y="350" width="114" height="30" rx="5"/><text class="text small" x="318" y="370">Other</text><text class="text" x="452" y="372">2:09</text><line class="line" x1="20" y1="391" x2="518" y2="391"/>
+    <text class="text" x="36" y="424">Duhule, condu-ma</text><rect class="input" x="306" y="402" width="114" height="30" rx="5"/><text class="text small" x="318" y="422">Other</text><text class="text" x="452" y="424">4:12</text><line class="line" x1="20" y1="443" x2="518" y2="443"/>
+    <text class="text" x="36" y="476">Instrumental</text><rect class="input" x="306" y="454" width="114" height="30" rx="5"/><text class="text small" x="318" y="474">Other</text><text class="text" x="452" y="476">2:22</text><line class="line" x1="20" y1="495" x2="518" y2="495"/>
+    <text class="text" x="36" y="528">Instrumental</text><rect class="input" x="306" y="506" width="114" height="30" rx="5"/><text class="text small" x="318" y="526">Other</text><text class="text" x="452" y="528">2:22</text><line class="line" x1="20" y1="547" x2="518" y2="547"/>
+    <text class="text" x="36" y="580">Veniti credinciosi</text><rect class="input" x="306" y="558" width="114" height="30" rx="5"/><text class="text small" x="318" y="578">Other</text><text class="text" x="452" y="580">2:09</text></g>
   </g>
-  <g transform="translate(438,102)">
-    <rect class="panel" width="620" height="590" rx="7" />
-    <text class="ink" x="22" y="42" font-size="20">Today's Schedule</text>
-    <text class="muted" x="22" y="66" font-size="14">Sunday Service - 2026-06-15</text>
-    <rect class="button" x="350" y="22" width="180" height="42" rx="7" />
-    <text class="text" x="366" y="48" font-size="14">06/15/2026</text>
-    <g transform="translate(22,94)">
-      <rect class="section-youth" width="576" height="78" rx="7" />
-      <rect fill="#10b981" x="20" y="20" width="6" height="38" rx="3" />
-      <text fill="#065f46" font-family="Inter, Arial, sans-serif" font-weight="700" x="46" y="48" font-size="20">Youth</text>
-      <text class="muted" x="416" y="48" font-size="14" font-weight="700">2 songs</text>
-      <rect class="button" x="486" y="18" width="70" height="42" rx="7" /><text class="blue-text" x="503" y="45" font-size="13">Play</text>
+
+  <g transform="translate(590,140)">
+    <rect class="panel" width="930" height="850" rx="6"/>
+    <text class="ink large" x="20" y="42">Today's Schedule</text><text class="muted med" x="20" y="68">Sunday Service - 2026-06-15</text>
+    <rect class="input" x="390" y="22" width="264" height="44" rx="6"/><text class="text med" x="406" y="50">Sunday Service - 2026-06-15</text>
+    <rect class="input" x="664" y="22" width="170" height="44" rx="6"/><text class="text med" x="684" y="50">06/15/2026</text><text class="muted med" font-weight="700" x="860" y="50">New</text>
+    <g transform="translate(20,96)">
+      <rect class="y" width="882" height="140" rx="6"/><rect fill="#10b981" x="54" y="24" width="5" height="38" rx="3"/><text fill="#065f46" font-family="Inter,Arial,sans-serif" font-weight="700" x="78" y="50" font-size="18">Youth</text><text class="muted small" font-weight="700" x="580" y="50">0 songs</text><rect class="btn" stroke="#245bdb" x="654" y="18" width="108" height="36" rx="6"/><text class="blueText small" x="674" y="42">Play section</text><rect class="dash" x="20" y="76" width="842" height="52" rx="6"/><text class="muted med" x="34" y="108">No songs in this section.</text>
     </g>
-    <g transform="translate(22,184)">
-      <rect class="section-choir" width="576" height="78" rx="7" />
-      <rect fill="#f59e0b" x="20" y="20" width="6" height="38" rx="3" />
-      <text fill="#92400e" font-family="Inter, Arial, sans-serif" font-weight="700" x="46" y="48" font-size="20">Choir</text>
-      <text class="muted" x="416" y="48" font-size="14" font-weight="700">1 song</text>
-    </g>
-    <g transform="translate(22,274)">
-      <rect class="section-solo" width="576" height="116" rx="7" />
-      <rect fill="#8b5cf6" x="20" y="20" width="6" height="38" rx="3" />
-      <text fill="#6d28d9" font-family="Inter, Arial, sans-serif" font-weight="700" x="46" y="48" font-size="20">Solo</text>
-      <text class="muted" x="416" y="48" font-size="14" font-weight="700">1 song</text>
-      <line class="line" x1="0" y1="70" x2="576" y2="70" />
-      <text class="text" x="46" y="96" font-size="14">1  Isus e Domnul vietii</text>
-      <text class="text" x="496" y="96" font-size="14">4:46</text>
-    </g>
-    <g transform="translate(22,402)">
-      <rect class="section-other" width="576" height="78" rx="7" />
-      <rect class="blue" x="20" y="20" width="6" height="38" rx="3" />
-      <text fill="#1e40af" font-family="Inter, Arial, sans-serif" font-weight="700" x="46" y="48" font-size="20">Other / Special</text>
-      <text class="muted" x="416" y="48" font-size="14" font-weight="700">0 songs</text>
-    </g>
-    <rect fill="#ffffff" stroke="#245bdb" stroke-width="1.5" x="22" y="508" width="576" height="44" rx="7" />
-    <text class="blue-text" x="270" y="536" font-size="15">+ Add Section</text>
+    <g transform="translate(20,250)"><rect class="c" width="882" height="140" rx="6"/><rect fill="#f59e0b" x="54" y="24" width="5" height="38" rx="3"/><text fill="#92400e" font-family="Inter,Arial,sans-serif" font-weight="700" x="78" y="50" font-size="18">Choir</text><text class="muted small" font-weight="700" x="580" y="50">0 songs</text><rect class="btn" stroke="#245bdb" x="654" y="18" width="108" height="36" rx="6"/><text class="blueText small" x="674" y="42">Play section</text><rect class="dash" x="20" y="76" width="842" height="52" rx="6"/><text class="muted med" x="34" y="108">No songs in this section.</text></g>
+    <g transform="translate(20,404)"><rect class="s" width="882" height="140" rx="6"/><rect fill="#8b5cf6" x="54" y="24" width="5" height="38" rx="3"/><text fill="#6d28d9" font-family="Inter,Arial,sans-serif" font-weight="700" x="78" y="50" font-size="18">Solo</text><text class="muted small" font-weight="700" x="580" y="50">0 songs</text><rect class="btn" stroke="#245bdb" x="654" y="18" width="108" height="36" rx="6"/><text class="blueText small" x="674" y="42">Play section</text><rect class="dash" x="20" y="76" width="842" height="52" rx="6"/><text class="muted med" x="34" y="108">No songs in this section.</text></g>
+    <g transform="translate(20,558)"><rect class="g" width="882" height="140" rx="6"/><rect fill="#0ea5e9" x="54" y="24" width="5" height="38" rx="3"/><text fill="#075985" font-family="Inter,Arial,sans-serif" font-weight="700" x="78" y="50" font-size="18">Guest</text><text class="muted small" font-weight="700" x="580" y="50">0 songs</text><rect class="btn" stroke="#245bdb" x="654" y="18" width="108" height="36" rx="6"/><text class="blueText small" x="674" y="42">Play section</text><rect class="dash" x="20" y="76" width="842" height="52" rx="6"/><text class="muted med" x="34" y="108">No songs in this section.</text></g>
+    <g transform="translate(20,712)"><rect class="o" width="882" height="58" rx="6"/><rect class="blue" x="54" y="14" width="5" height="34" rx="3"/><text fill="#1e40af" font-family="Inter,Arial,sans-serif" font-weight="700" x="78" y="38" font-size="18">Other / Special</text><text class="muted small" font-weight="700" x="580" y="38">0 songs</text><rect class="btn" stroke="#245bdb" x="654" y="12" width="108" height="36" rx="6"/><text class="blueText small" x="674" y="36">Play section</text></g>
+    <rect fill="#fff" stroke="#245bdb" stroke-width="1.5" x="20" y="790" width="882" height="44" rx="6"/><text class="blueText med" x="414" y="818">+ Add Section</text>
   </g>
-  <g transform="translate(1078,102)">
-    <rect class="panel" width="334" height="590" rx="7" />
-    <text class="ink" x="22" y="42" font-size="20">Import Guest File</text>
-    <rect fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="6 5" x="22" y="84" width="290" height="170" rx="7" />
-    <text class="ink" x="110" y="176" font-size="18">Drop MP3 here</text>
-    <text class="blue-text" x="134" y="202" font-size="14">or browse</text>
-    <text class="text" x="22" y="302" font-size="14">Section</text>
-    <rect class="button" x="22" y="318" width="290" height="42" rx="7" />
-    <text class="text" x="40" y="344" font-size="14">Guest</text>
-    <text class="text" x="22" y="398" font-size="14">Song title</text>
-    <rect class="button" x="22" y="414" width="290" height="42" rx="7" />
-    <rect fill="#9db5f1" x="22" y="486" width="290" height="42" rx="7" />
-    <text fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="700" x="120" y="512" font-size="14">Add to Service</text>
+
+  <g transform="translate(1530,140)">
+    <rect class="panel" width="476" height="850" rx="6"/>
+    <text class="ink large" x="24" y="48">Import Guest File</text>
+    <rect class="dash" fill="#f8fafc" x="24" y="96" width="428" height="268" rx="6"/>
+    <text class="ink med" x="174" y="258">Drop MP3 here</text><text class="blueText small" x="202" y="286">or browse</text>
+    <text class="text med" x="24" y="406">Section</text><rect class="input" x="24" y="420" width="428" height="44" rx="6"/><text class="text med" x="44" y="448">Guest</text>
+    <text class="text med" x="24" y="506">Guest or group name</text><rect class="input" x="24" y="520" width="428" height="44" rx="6"/><text class="muted med" x="44" y="548">Optional</text>
+    <text class="text med" x="24" y="604">Song title</text><rect class="input" x="24" y="618" width="428" height="44" rx="6"/>
+    <rect fill="#9db5f1" x="24" y="700" width="428" height="42" rx="6"/><text fill="#fff" font-family="Inter,Arial,sans-serif" font-weight="700" x="194" y="726" font-size="16">Add to Service</text>
+    <text class="muted med" x="122" y="774">File is copied into today's service folder.</text>
   </g>
-  <g transform="translate(0,718)">
-    <rect fill="#ffffff" width="1440" height="142" />
-    <line class="line" x1="0" y1="0" x2="1440" y2="0" />
-    <text class="blue-text" x="110" y="38" font-size="14">Now Playing</text>
-    <text class="ink" x="110" y="64" font-size="20">Nothing Else</text>
-    <text class="muted" x="110" y="88" font-size="14">Guest - John Doe</text>
-    <line stroke="#cbd5e1" stroke-width="8" stroke-linecap="round" x1="110" y1="112" x2="520" y2="112" />
-    <line stroke="#245bdb" stroke-width="8" stroke-linecap="round" x1="110" y1="112" x2="254" y2="112" />
-    <circle class="blue" cx="720" cy="72" r="44" />
-    <rect fill="#ffffff" x="709" y="52" width="10" height="40" rx="3" />
-    <rect fill="#ffffff" x="727" y="52" width="10" height="40" rx="3" />
-    <rect class="button" x="875" y="40" width="74" height="64" rx="7" />
-    <text class="ink" x="898" y="112" font-size="13">Stop</text>
-    <rect fill="#fef2f2" stroke="#fecaca" x="1010" y="38" width="110" height="42" rx="7" />
-    <text fill="#b91c1c" font-family="Inter, Arial, sans-serif" font-weight="700" x="1035" y="65" font-size="14">Fade Out</text>
-    <text class="blue-text" x="1180" y="40" font-size="14">Volume</text>
-    <line stroke="#245bdb" stroke-width="8" stroke-linecap="round" x1="1180" y1="72" x2="1344" y2="72" />
-    <circle class="blue" cx="1344" cy="72" r="10" />
+
+  <g transform="translate(0,1008)">
+    <rect class="white" width="2048" height="204"/><line class="line" x1="0" y1="0" x2="2048" y2="0"/>
+    <rect class="ghost" x="28" y="38" width="76" height="76" rx="7"/><text class="blueText med" x="122" y="36">Now Playing</text><text class="ink large" x="122" y="68">Ce Nume Minunat</text><text class="text med" x="122" y="94">Solo</text><text class="text med" x="122" y="132">0:00</text><line stroke="#cbd5e1" stroke-width="9" stroke-linecap="round" x1="184" y1="126" x2="714" y2="126"/><text class="text med" x="744" y="132">3:12</text>
+    <rect class="btn" x="796" y="38" width="96" height="76" rx="7"/><text class="ink med" x="816" y="94">Restart</text><rect class="btn" x="906" y="38" width="96" height="76" rx="7"/><text class="muted med" font-weight="700" x="928" y="94">Previous</text><circle class="blue" cx="1062" cy="76" r="48"/><polygon fill="#fff" points="1048,50 1048,102 1092,76"/><rect class="btn" x="1124" y="38" width="96" height="76" rx="7"/><text class="muted med" font-weight="700" x="1158" y="94">Next</text><rect fill="#fef2f2" stroke="#fecaca" x="1234" y="38" width="96" height="76" rx="7"/><text fill="#b91c1c" font-family="Inter,Arial,sans-serif" font-weight="700" x="1264" y="94" font-size="16">Stop</text>
+    <line class="line" x1="1348" y1="20" x2="1348" y2="126"/><text class="text med" x="1370" y="22">Fade Out</text><rect class="input" x="1370" y="42" width="138" height="44" rx="6"/><text class="text small" x="1390" y="70">5 sec</text><text class="blueText med" x="1518" y="22">Volume</text><line stroke="#245bdb" stroke-width="9" stroke-linecap="round" x1="1552" y1="68" x2="1926" y2="68"/><circle class="blue" cx="1926" cy="68" r="10"/><text class="text med" x="1948" y="74">100%</text>
+    <rect class="ghost" x="76" y="154" width="1900" height="38" rx="6"/><text class="muted med" x="90" y="179">Status: </text><text class="ink med" x="150" y="179">stopped.</text><text class="muted med" x="220" y="179">Loaded Ce Nume Minunat.</text>
   </g>
 </svg>

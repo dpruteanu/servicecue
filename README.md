@@ -4,15 +4,15 @@ ServiceCue is a local desktop app for church media volunteers to find backing tr
 
 It is designed for the livestream/media booth: simple, local-only, Windows-first, and usable without internet during service.
 
-## UX Preview
+## Current UX Preview
 
-Setup Mode is for preparing the service: search the library, organize collapsible service sections, import guest files, and save the schedule.
+Setup Mode is for preparing the service: search the library, organize accordion-style service sections, import guest files, and save the schedule.
 
-![ServiceCue Setup Mode reference](docs/images/servicecue-setup-reference.svg)
+![ServiceCue Setup Mode screenshot reference](docs/images/servicecue-setup-reference.svg)
 
-Live Mode is for service time: a simplified service order, safer live-only removal confirmation, and focused playback controls.
+Live Mode is for service time: a simplified full-width service order, accordion-style sections, safer live-only removal confirmation, and focused playback controls.
 
-![ServiceCue Live Mode reference](docs/images/servicecue-live-reference.svg)
+![ServiceCue Live Mode screenshot reference](docs/images/servicecue-live-reference.svg)
 
 ## What It Does
 
