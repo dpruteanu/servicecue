@@ -7,6 +7,8 @@ export type TrackInfo = {
 };
 
 const STOP_FADE_SECONDS = 0.015;
+const SILENT_GAIN = 0.0001;
+const RAMP_TAIL_MS = 40;
 
 export class ServiceCueAudioPlayer {
   private readonly context: AudioContext;
@@ -132,15 +134,14 @@ export class ServiceCueAudioPlayer {
       return;
     }
 
-    this.rampGainTo(0, STOP_FADE_SECONDS);
+    this.rampGainTo(SILENT_GAIN, STOP_FADE_SECONDS);
 
     await new Promise<void>((resolve) => {
       window.setTimeout(() => {
         this.sourceElement.pause();
         this.status = "paused";
-        this.restoreGain();
         resolve();
-      }, STOP_FADE_SECONDS * 1000);
+      }, this.rampTimeoutMs(STOP_FADE_SECONDS));
     });
   }
 
@@ -154,20 +155,18 @@ export class ServiceCueAudioPlayer {
     if (this.status === "paused") {
       this.sourceElement.currentTime = 0;
       this.status = "stopped";
-      this.restoreGain();
       return;
     }
 
-    this.rampGainTo(0, STOP_FADE_SECONDS);
+    this.rampGainTo(SILENT_GAIN, STOP_FADE_SECONDS);
 
     await new Promise<void>((resolve) => {
       window.setTimeout(() => {
         this.sourceElement.pause();
         this.sourceElement.currentTime = 0;
         this.status = "stopped";
-        this.restoreGain();
         resolve();
-      }, STOP_FADE_SECONDS * 1000);
+      }, this.rampTimeoutMs(STOP_FADE_SECONDS));
     });
   }
 
@@ -187,15 +186,14 @@ export class ServiceCueAudioPlayer {
     }
 
     this.status = "fading";
-    this.rampGainTo(0, seconds);
+    this.rampGainTo(SILENT_GAIN, seconds);
 
     window.setTimeout(() => {
       this.sourceElement.pause();
       this.sourceElement.currentTime = 0;
       this.status = "stopped";
-      this.restoreGain();
       this.onEnded?.();
-    }, seconds * 1000);
+    }, this.rampTimeoutMs(seconds));
   }
 
   async playTestTone(deviceId: string) {
@@ -245,6 +243,10 @@ export class ServiceCueAudioPlayer {
     this.gain.gain.cancelScheduledValues(now);
     this.gain.gain.setValueAtTime(this.gain.gain.value, now);
     this.gain.gain.linearRampToValueAtTime(value, now + seconds);
+  }
+
+  private rampTimeoutMs(seconds: number) {
+    return Math.max(0, seconds * 1000) + RAMP_TAIL_MS;
   }
 
   private revokeObjectUrl() {
