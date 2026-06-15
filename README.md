@@ -4,6 +4,16 @@ ServiceCue is a local desktop app for church media volunteers to find backing tr
 
 It is designed for the livestream/media booth: simple, local-only, Windows-first, and usable without internet during service.
 
+## UX Preview
+
+Setup Mode is for preparing the service: search the library, organize collapsible service sections, import guest files, and save the schedule.
+
+![ServiceCue Setup Mode reference](docs/images/servicecue-setup-reference.svg)
+
+Live Mode is for service time: a simplified service order, safer live-only removal confirmation, and focused playback controls.
+
+![ServiceCue Live Mode reference](docs/images/servicecue-live-reference.svg)
+
 ## What It Does
 
 - Search a master backing-track folder.
@@ -17,6 +27,8 @@ It is designed for the livestream/media booth: simple, local-only, Windows-first
 - Play, pause, stop, restart, fade out, previous, and next.
 - Scrub through the loaded track with the progress bar.
 - Use Live Mode to prevent accidental edits during service.
+- Remove a song from the current Live run only after confirmation, with Undo available.
+- Play through a section automatically from one song to the next.
 - Save/load schedules as JSON files.
 
 ## Download And Install
@@ -149,11 +161,11 @@ Allowed in Live Mode:
 - Previous/next.
 - Adjust volume.
 - Scrub the loaded track.
+- Remove a song from the current run after confirming.
 
 Not available in Live Mode:
 
 - Rename sections.
-- Remove tracks.
 - Reorder tracks.
 - Change settings.
 - Change the master library.

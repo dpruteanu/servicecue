@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="860" viewBox="0 0 1440 860" role="img" aria-labelledby="title desc">
+  <title id="title">ServiceCue Setup Mode Reference</title>
+  <desc id="desc">A reference image showing ServiceCue setup mode with a library panel, collapsible schedule sections, guest import, and the bottom player.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f6f8fb; }
+      .panel { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .line { stroke: #d8dee8; stroke-width: 1.5; }
+      .ink { fill: #172033; font-family: Inter, Arial, sans-serif; font-weight: 700; }
+      .text { fill: #172033; font-family: Inter, Arial, sans-serif; }
+      .muted { fill: #64748b; font-family: Inter, Arial, sans-serif; }
+      .blue { fill: #245bdb; }
+      .blue-text { fill: #245bdb; font-family: Inter, Arial, sans-serif; font-weight: 700; }
+      .button { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .section-youth { fill: #ecfdf5; stroke: #a7f3d0; }
+      .section-choir { fill: #fffbeb; stroke: #fde68a; }
+      .section-solo { fill: #f5f3ff; stroke: #ddd6fe; }
+      .section-other { fill: #eff6ff; stroke: #bfdbfe; }
+      .row { fill: #ffffff; stroke: #d8dee8; }
+    </style>
+  </defs>
+  <rect class="bg" width="1440" height="860" />
+  <rect fill="#ffffff" width="1440" height="76" />
+  <line class="line" x1="0" y1="76" x2="1440" y2="76" />
+  <rect class="blue" x="28" y="20" width="40" height="40" rx="10" />
+  <text class="ink" x="82" y="37" font-size="22">ServiceCue</text>
+  <text class="muted" x="82" y="58" font-size="13">Local backing-track player for church services</text>
+  <rect class="button" x="625" y="18" width="74" height="42" rx="7" />
+  <rect class="blue" x="629" y="22" width="66" height="34" rx="5" />
+  <text fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="700" x="646" y="44" font-size="14">Setup</text>
+  <rect class="button" x="699" y="18" width="74" height="42" rx="7" />
+  <text class="muted" x="724" y="44" font-size="14" font-weight="700">Live</text>
+  <rect class="button" x="790" y="18" width="260" height="42" rx="7" />
+  <text class="text" x="807" y="44" font-size="14">Sunday Service - 2026-06-15</text>
+  <rect class="button" x="1064" y="18" width="82" height="42" rx="7" />
+  <text class="ink" x="1094" y="44" font-size="14">Save</text>
+  <rect class="button" x="1158" y="18" width="82" height="42" rx="7" />
+  <text class="ink" x="1188" y="44" font-size="14">Load</text>
+  <rect class="button" x="1252" y="18" width="136" height="42" rx="7" />
+  <text class="ink" x="1280" y="44" font-size="14">Import Guest</text>
+  <g transform="translate(28,102)">
+    <rect class="panel" width="390" height="590" rx="7" />
+    <text class="ink" x="22" y="42" font-size="20">Library</text>
+    <text class="muted" x="326" y="42" font-size="13" font-weight="700">1243 tracks</text>
+    <rect class="button" x="22" y="68" width="346" height="46" rx="7" />
+    <text class="muted" x="50" y="97" font-size="14">D:\Church Media\Negativ Library</text>
+    <rect class="button" x="22" y="126" width="346" height="46" rx="7" />
+    <text class="muted" x="50" y="155" font-size="14">Search songs, groups, or filename</text>
+    <rect class="blue" x="22" y="184" width="54" height="36" rx="7" />
+    <text fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="700" x="42" y="207" font-size="13">All</text>
+    <g class="button">
+      <rect x="88" y="184" width="62" height="36" rx="7" />
+      <rect x="162" y="184" width="62" height="36" rx="7" />
+      <rect x="236" y="184" width="62" height="36" rx="7" />
+      <rect x="310" y="184" width="58" height="36" rx="7" />
+    </g>
+    <text class="ink" x="106" y="207" font-size="13">Youth</text>
+    <text class="ink" x="180" y="207" font-size="13">Choir</text>
+    <text class="ink" x="254" y="207" font-size="13">Solo</text>
+    <text class="ink" x="326" y="207" font-size="13">Other</text>
+    <text class="muted" x="32" y="255" font-size="12" font-weight="700">TITLE</text>
+    <text class="muted" x="220" y="255" font-size="12" font-weight="700">GROUP</text>
+    <text class="muted" x="320" y="255" font-size="12" font-weight="700">LENGTH</text>
+    <line class="line" x1="22" y1="266" x2="368" y2="266" />
+    <g font-size="14">
+      <text class="text" x="32" y="294">Hai lupta frate lupta</text><text class="muted" x="220" y="294">Youth</text><text class="text" x="326" y="294">4:15</text>
+      <line class="line" x1="22" y1="310" x2="368" y2="310" />
+      <text class="text" x="32" y="338">Fii binecuvantat</text><text class="muted" x="220" y="338">Youth</text><text class="text" x="326" y="338">3:48</text>
+      <line class="line" x1="22" y1="354" x2="368" y2="354" />
+      <text class="text" x="32" y="382">O cantare de marire</text><text class="muted" x="220" y="382">Choir</text><text class="text" x="326" y="382">5:21</text>
+      <line class="line" x1="22" y1="398" x2="368" y2="398" />
+      <text class="text" x="32" y="426">Nothing Else</text><text class="muted" x="220" y="426">Guest</text><text class="text" x="326" y="426">4:28</text>
+      <line class="line" x1="22" y1="442" x2="368" y2="442" />
+      <text class="text" x="32" y="470">Instrumental - Soft</text><text class="muted" x="220" y="470">Other</text><text class="text" x="326" y="470">3:30</text>
+    </g>
+  </g>
+  <g transform="translate(438,102)">
+    <rect class="panel" width="620" height="590" rx="7" />
+    <text class="ink" x="22" y="42" font-size="20">Today's Schedule</text>
+    <text class="muted" x="22" y="66" font-size="14">Sunday Service - 2026-06-15</text>
+    <rect class="button" x="350" y="22" width="180" height="42" rx="7" />
+    <text class="text" x="366" y="48" font-size="14">06/15/2026</text>
+    <g transform="translate(22,94)">
+      <rect class="section-youth" width="576" height="78" rx="7" />
+      <rect fill="#10b981" x="20" y="20" width="6" height="38" rx="3" />
+      <text fill="#065f46" font-family="Inter, Arial, sans-serif" font-weight="700" x="46" y="48" font-size="20">Youth</text>
+      <text class="muted" x="416" y="48" font-size="14" font-weight="700">2 songs</text>
+      <rect class="button" x="486" y="18" width="70" height="42" rx="7" /><text class="blue-text" x="503" y="45" font-size="13">Play</text>
+    </g>
+    <g transform="translate(22,184)">
+      <rect class="section-choir" width="576" height="78" rx="7" />
+      <rect fill="#f59e0b" x="20" y="20" width="6" height="38" rx="3" />
+      <text fill="#92400e" font-family="Inter, Arial, sans-serif" font-weight="700" x="46" y="48" font-size="20">Choir</text>
+      <text class="muted" x="416" y="48" font-size="14" font-weight="700">1 song</text>
+    </g>
+    <g transform="translate(22,274)">
+      <rect class="section-solo" width="576" height="116" rx="7" />
+      <rect fill="#8b5cf6" x="20" y="20" width="6" height="38" rx="3" />
+      <text fill="#6d28d9" font-family="Inter, Arial, sans-serif" font-weight="700" x="46" y="48" font-size="20">Solo</text>
+      <text class="muted" x="416" y="48" font-size="14" font-weight="700">1 song</text>
+      <line class="line" x1="0" y1="70" x2="576" y2="70" />
+      <text class="text" x="46" y="96" font-size="14">1  Isus e Domnul vietii</text>
+      <text class="text" x="496" y="96" font-size="14">4:46</text>
+    </g>
+    <g transform="translate(22,402)">
+      <rect class="section-other" width="576" height="78" rx="7" />
+      <rect class="blue" x="20" y="20" width="6" height="38" rx="3" />
+      <text fill="#1e40af" font-family="Inter, Arial, sans-serif" font-weight="700" x="46" y="48" font-size="20">Other / Special</text>
+      <text class="muted" x="416" y="48" font-size="14" font-weight="700">0 songs</text>
+    </g>
+    <rect fill="#ffffff" stroke="#245bdb" stroke-width="1.5" x="22" y="508" width="576" height="44" rx="7" />
+    <text class="blue-text" x="270" y="536" font-size="15">+ Add Section</text>
+  </g>
+  <g transform="translate(1078,102)">
+    <rect class="panel" width="334" height="590" rx="7" />
+    <text class="ink" x="22" y="42" font-size="20">Import Guest File</text>
+    <rect fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="6 5" x="22" y="84" width="290" height="170" rx="7" />
+    <text class="ink" x="110" y="176" font-size="18">Drop MP3 here</text>
+    <text class="blue-text" x="134" y="202" font-size="14">or browse</text>
+    <text class="text" x="22" y="302" font-size="14">Section</text>
+    <rect class="button" x="22" y="318" width="290" height="42" rx="7" />
+    <text class="text" x="40" y="344" font-size="14">Guest</text>
+    <text class="text" x="22" y="398" font-size="14">Song title</text>
+    <rect class="button" x="22" y="414" width="290" height="42" rx="7" />
+    <rect fill="#9db5f1" x="22" y="486" width="290" height="42" rx="7" />
+    <text fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="700" x="120" y="512" font-size="14">Add to Service</text>
+  </g>
+  <g transform="translate(0,718)">
+    <rect fill="#ffffff" width="1440" height="142" />
+    <line class="line" x1="0" y1="0" x2="1440" y2="0" />
+    <text class="blue-text" x="110" y="38" font-size="14">Now Playing</text>
+    <text class="ink" x="110" y="64" font-size="20">Nothing Else</text>
+    <text class="muted" x="110" y="88" font-size="14">Guest - John Doe</text>
+    <line stroke="#cbd5e1" stroke-width="8" stroke-linecap="round" x1="110" y1="112" x2="520" y2="112" />
+    <line stroke="#245bdb" stroke-width="8" stroke-linecap="round" x1="110" y1="112" x2="254" y2="112" />
+    <circle class="blue" cx="720" cy="72" r="44" />
+    <rect fill="#ffffff" x="709" y="52" width="10" height="40" rx="3" />
+    <rect fill="#ffffff" x="727" y="52" width="10" height="40" rx="3" />
+    <rect class="button" x="875" y="40" width="74" height="64" rx="7" />
+    <text class="ink" x="898" y="112" font-size="13">Stop</text>
+    <rect fill="#fef2f2" stroke="#fecaca" x="1010" y="38" width="110" height="42" rx="7" />
+    <text fill="#b91c1c" font-family="Inter, Arial, sans-serif" font-weight="700" x="1035" y="65" font-size="14">Fade Out</text>
+    <text class="blue-text" x="1180" y="40" font-size="14">Volume</text>
+    <line stroke="#245bdb" stroke-width="8" stroke-linecap="round" x1="1180" y1="72" x2="1344" y2="72" />
+    <circle class="blue" cx="1344" cy="72" r="10" />
+  </g>
+</svg>
