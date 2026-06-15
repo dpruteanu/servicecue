@@ -35,7 +35,6 @@ export class ServiceCueAudioPlayer {
     this.sourceElement.addEventListener("ended", () => {
       this.status = "stopped";
       this.sourceElement.currentTime = 0;
-      this.restoreGain();
       this.onEnded?.();
     });
 

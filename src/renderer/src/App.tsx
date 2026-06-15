@@ -172,6 +172,61 @@ function sectionIcon(type: ScheduleSection["type"]) {
   return <Users className="size-5" aria-hidden="true" />;
 }
 
+function sectionTone(type: ScheduleSection["type"]) {
+  if (type === "Youth") {
+    return {
+      icon: "text-emerald-700",
+      header: "border-emerald-200 bg-emerald-50",
+      tabActive: "border-emerald-500 bg-emerald-50 text-emerald-800",
+      tabIdle: "border-cue-line bg-white text-cue-ink hover:border-emerald-300 hover:bg-emerald-50",
+      rail: "bg-emerald-500",
+      title: "text-emerald-800",
+    };
+  }
+
+  if (type === "Choir") {
+    return {
+      icon: "text-amber-700",
+      header: "border-amber-200 bg-amber-50",
+      tabActive: "border-amber-500 bg-amber-50 text-amber-800",
+      tabIdle: "border-cue-line bg-white text-cue-ink hover:border-amber-300 hover:bg-amber-50",
+      rail: "bg-amber-500",
+      title: "text-amber-800",
+    };
+  }
+
+  if (type === "Solo") {
+    return {
+      icon: "text-violet-700",
+      header: "border-violet-200 bg-violet-50",
+      tabActive: "border-violet-500 bg-violet-50 text-violet-800",
+      tabIdle: "border-cue-line bg-white text-cue-ink hover:border-violet-300 hover:bg-violet-50",
+      rail: "bg-violet-500",
+      title: "text-violet-800",
+    };
+  }
+
+  if (type === "Guest") {
+    return {
+      icon: "text-sky-700",
+      header: "border-sky-200 bg-sky-50",
+      tabActive: "border-sky-500 bg-sky-50 text-sky-800",
+      tabIdle: "border-cue-line bg-white text-cue-ink hover:border-sky-300 hover:bg-sky-50",
+      rail: "bg-sky-500",
+      title: "text-sky-800",
+    };
+  }
+
+  return {
+    icon: "text-cue-action",
+    header: "border-blue-200 bg-blue-50",
+    tabActive: "border-cue-action bg-blue-50 text-cue-actionDark",
+    tabIdle: "border-cue-line bg-white text-cue-ink hover:border-blue-300 hover:bg-blue-50",
+    rail: "bg-cue-action",
+    title: "text-cue-actionDark",
+  };
+}
+
 function iconButtonClass(active = false) {
   return [
     "inline-flex size-9 items-center justify-center rounded-md border text-sm font-semibold transition",
@@ -244,9 +299,17 @@ export function App() {
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionName, setEditingSectionName] = useState("");
   const [openSectionMenuId, setOpenSectionMenuId] = useState<string | null>(null);
+  const [playThroughSectionId, setPlayThroughSectionId] = useState<string | null>(null);
+  const [liveRemovedItemIds, setLiveRemovedItemIds] = useState<Set<string>>(() => new Set());
+  const [lastLiveRemovedItem, setLastLiveRemovedItem] = useState<{ itemId: string; title: string } | null>(null);
   const [message, setMessage] = useState("Choose a master folder, build a schedule, then load a track.");
   const isLiveMode = mode === "live";
   const isPlaying = status === "playing" || status === "fading";
+  const scheduleRef = useRef(schedule);
+  const libraryIndexRef = useRef(libraryIndex);
+  const selectedDeviceIdRef = useRef(selectedDeviceId);
+  const playThroughSectionIdRef = useRef(playThroughSectionId);
+  const liveRemovedItemIdsRef = useRef(liveRemovedItemIds);
 
   const orderedSections = useMemo(
     () => schedule.sections.slice().sort((a, b) => a.sortOrder - b.sortOrder),
@@ -281,12 +344,16 @@ export function App() {
     return Math.min(100, (currentTime / track.durationSeconds) * 100);
   }, [currentTime, track?.durationSeconds]);
 
+  const activeSection = orderedSections.find((section) => section.id === activeSectionId) ?? orderedSections[0];
+  const visibleSections = activeSection ? [activeSection] : [];
+
   const scheduleQueue = useMemo(() => orderedSections.flatMap((section) =>
     section.items
       .slice()
       .sort((a, b) => a.sortOrder - b.sortOrder)
+      .filter((item) => !isLiveMode || !liveRemovedItemIds.has(item.id))
       .map((item) => ({ section, item })),
-  ), [orderedSections]);
+  ), [isLiveMode, liveRemovedItemIds, orderedSections]);
 
   const loadedScheduleEntry = useMemo(
     () => scheduleQueue.find((entry) => entry.item.id === loadedScheduleItemId),
@@ -315,6 +382,33 @@ export function App() {
       setSelectedSectionId(orderedSections[0]?.id ?? "");
     }
   }, [activeSectionId, orderedSections]);
+
+  useEffect(() => {
+    scheduleRef.current = schedule;
+  }, [schedule]);
+
+  useEffect(() => {
+    libraryIndexRef.current = libraryIndex;
+  }, [libraryIndex]);
+
+  useEffect(() => {
+    selectedDeviceIdRef.current = selectedDeviceId;
+  }, [selectedDeviceId]);
+
+  useEffect(() => {
+    playThroughSectionIdRef.current = playThroughSectionId;
+  }, [playThroughSectionId]);
+
+  useEffect(() => {
+    liveRemovedItemIdsRef.current = liveRemovedItemIds;
+  }, [liveRemovedItemIds]);
+
+  useEffect(() => {
+    if (!isLiveMode) {
+      setLiveRemovedItemIds(new Set());
+      setLastLiveRemovedItem(null);
+    }
+  }, [isLiveMode]);
 
   useEffect(() => {
     playerRef.current = new ServiceCueAudioPlayer();
@@ -950,12 +1044,80 @@ export function App() {
     setMessage("Removed track from the service order.");
   }
 
-  async function loadIndexedTrack(indexedTrack: LibraryTrack, itemId?: string) {
+  async function removeFromCurrentRun(item: ScheduleItem, title: string) {
+    setLiveRemovedItemIds((currentIds) => new Set(currentIds).add(item.id));
+    setLastLiveRemovedItem({ itemId: item.id, title });
+
+    if (loadedScheduleItemId === item.id) {
+      await handleStop();
+      setLoadedScheduleItemId(null);
+    }
+
+    setMessage(`Removed ${title} from this Live run. The saved schedule was not changed.`);
+  }
+
+  function undoLiveRemove() {
+    if (!lastLiveRemovedItem) {
+      return;
+    }
+
+    setLiveRemovedItemIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      nextIds.delete(lastLiveRemovedItem.itemId);
+      return nextIds;
+    });
+    setMessage(`Restored ${lastLiveRemovedItem.title} to this Live run.`);
+    setLastLiveRemovedItem(null);
+  }
+
+  function handleTrackEnded(itemId?: string) {
+    setStatus("stopped");
+    setCurrentTime(0);
+
+    const sectionId = playThroughSectionIdRef.current;
+
+    if (!sectionId || !itemId) {
+      return;
+    }
+
+    const section = scheduleRef.current.sections.find((candidate) =>
+      candidate.id === sectionId && candidate.items.some((item) => item.id === itemId),
+    );
+
+    if (!section) {
+      setPlayThroughSectionId(null);
+      return;
+    }
+
+    const runItems = section.items
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .filter((item) => item.status !== "missing" && !liveRemovedItemIdsRef.current.has(item.id));
+    const currentIndex = runItems.findIndex((item) => item.id === itemId);
+    const nextItem = currentIndex >= 0 ? runItems[currentIndex + 1] : undefined;
+
+    if (!nextItem) {
+      setPlayThroughSectionId(null);
+      setMessage(`Finished ${section.name}.`);
+      return;
+    }
+
+    const indexedTrack = findTrackById(libraryIndexRef.current, nextItem.trackId);
+
+    if (!indexedTrack) {
+      setMessage("The next track in this section is missing.");
+      setPlayThroughSectionId(null);
+      return;
+    }
+
+    void loadIndexedTrack(indexedTrack, nextItem.id, true);
+  }
+
+  async function loadIndexedTrack(indexedTrack: LibraryTrack, itemId?: string, autoPlay = false) {
     try {
       const data = await window.serviceCue.readAudioFile(indexedTrack.filePath);
       const loadedTrack = await playerRef.current?.load(indexedTrack.filePath, data, () => {
-        setStatus("stopped");
-        setCurrentTime(0);
+        handleTrackEnded(itemId);
       });
 
       if (loadedTrack) {
@@ -964,13 +1126,20 @@ export function App() {
         setCurrentTime(0);
         setStatus("stopped");
         setMessage(`Loaded ${indexedTrack.displayTitle}.`);
+
+        if (autoPlay) {
+          await playerRef.current?.setOutputDevice(selectedDeviceIdRef.current);
+          await playerRef.current?.play();
+          setStatus("playing");
+          setMessage(`Playing ${indexedTrack.displayTitle}.`);
+        }
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load this track.");
     }
   }
 
-  async function loadScheduleItem(item: ScheduleItem) {
+  async function loadScheduleItem(item: ScheduleItem, autoPlay = false) {
     const indexedTrack = findTrackById(libraryIndex, item.trackId);
 
     if (!indexedTrack || item.status === "missing") {
@@ -978,7 +1147,29 @@ export function App() {
       return;
     }
 
-    await loadIndexedTrack(indexedTrack, item.id);
+    await loadIndexedTrack(indexedTrack, item.id, autoPlay);
+  }
+
+  async function handlePlaySection(section: ScheduleSection) {
+    const nextItem = section.items
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .find((item) => item.status !== "missing" && !liveRemovedItemIds.has(item.id));
+
+    if (!nextItem) {
+      setMessage(`${section.name} has no playable songs.`);
+      return;
+    }
+
+    setSelectedSectionId(section.id);
+    setPlayThroughSectionId(section.id);
+    await loadScheduleItem(nextItem, true);
+    setMessage(`Playing through ${section.name}.`);
+  }
+
+  function stopPlayThrough() {
+    setPlayThroughSectionId(null);
+    setMessage("Section play-through is off.");
   }
 
   async function locateScheduleItem(sectionId: string, itemId: string) {
@@ -1036,6 +1227,7 @@ export function App() {
     await playerRef.current?.stop();
     setStatus("stopped");
     setCurrentTime(0);
+    setPlayThroughSectionId(null);
   }
 
   async function handleRestart() {
@@ -1048,6 +1240,7 @@ export function App() {
   }
 
   async function handleFadeOut() {
+    setPlayThroughSectionId(null);
     await playerRef.current?.fadeOut(fadeSeconds);
     setStatus("fading");
   }
@@ -1292,79 +1485,140 @@ export function App() {
             )}
           </div>
 
-          <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1 2xl:mt-4 2xl:space-y-3">
-            {orderedSections.map((section) => (
-              <div
-                key={section.id}
-                className={[
-                  "rounded-md border bg-white p-2 transition-colors 2xl:p-3",
-                  dragOverSectionId === section.id
-                    ? "border-cue-action bg-blue-50"
-                    : "border-cue-line",
-                ].join(" ")}
-                onDragLeave={isLiveMode ? undefined : () => setDragOverSectionId((current) => current === section.id ? null : current)}
-                onDragOver={isLiveMode ? undefined : (event) => handleSectionDragOver(event, section.id)}
-                onDrop={isLiveMode ? undefined : (event) => handleSectionDrop(event, section.id)}
-              >
-                <div className="flex items-center justify-between gap-2 border-b border-cue-line pb-2 2xl:gap-3 2xl:pb-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="text-cue-action">{sectionIcon(section.type)}</div>
-                    {editingSectionId === section.id ? (
-                      <input
-                        className="min-w-0 rounded-md border border-cue-line px-2 py-1 text-sm font-semibold"
-                        value={editingSectionName}
-                        autoFocus
-                        onBlur={commitSectionName}
-                        onChange={(event) => setEditingSectionName(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") commitSectionName();
-                          if (event.key === "Escape") setEditingSectionId(null);
-                        }}
-                      />
-                    ) : (
-                      <div className="min-w-0 truncate text-base font-semibold text-cue-action">{section.name}</div>
-                    )}
-                  </div>
-                  <div className="relative flex items-center gap-2">
-                    <span className="text-xs text-cue-muted 2xl:text-sm">{section.items.length} {section.items.length === 1 ? "song" : "songs"}</span>
-                    {!isLiveMode && (
-                      <>
-                        <button className={iconButtonClass()} type="button" title="Rename section" onClick={() => startEditingSection(section)}>
-                          <Edit3 className="size-4" aria-hidden="true" />
-                        </button>
-                        <button
-                          className={iconButtonClass()}
-                          type="button"
-                          title="Section menu"
-                          onClick={() => setOpenSectionMenuId((current) => current === section.id ? null : section.id)}
-                        >
-                          <MoreVertical className="size-4" aria-hidden="true" />
-                        </button>
-                        {openSectionMenuId === section.id && (
-                          <div className="absolute right-0 top-10 z-10 w-44 rounded-md border border-cue-line bg-white p-1 shadow-lg">
-                            <button className={buttonClass("ghost") + " w-full justify-start"} type="button" onClick={() => startEditingSection(section)}>
-                              Rename section
-                            </button>
-                            <button
-                              className={dangerButtonClass() + " w-full justify-start border-transparent px-3 py-2 shadow-none"}
-                              type="button"
-                              disabled={orderedSections.length <= 1}
-                              onClick={() => removeSection(section.id)}
-                            >
-                              Remove section
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
+          {orderedSections.length > 0 && (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {orderedSections.map((section) => {
+                const tone = sectionTone(section.type);
+                const visibleItemCount = section.items.filter((item) => !isLiveMode || !liveRemovedItemIds.has(item.id)).length;
+                const isActive = section.id === activeSectionId;
 
-                <div className="divide-y divide-cue-line">
-                  {section.items
-                    .slice()
-                    .sort((a, b) => a.sortOrder - b.sortOrder)
-                    .map((item, index) => {
+                return (
+                  <button
+                    key={section.id}
+                    className={[
+                      "inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition",
+                      isActive ? tone.tabActive : tone.tabIdle,
+                      dragOverSectionId === section.id ? "ring-2 ring-cue-action/20" : "",
+                    ].join(" ")}
+                    type="button"
+                    onClick={() => setSelectedSectionId(section.id)}
+                    onDragLeave={isLiveMode ? undefined : () => setDragOverSectionId((current) => current === section.id ? null : current)}
+                    onDragOver={isLiveMode ? undefined : (event) => handleSectionDragOver(event, section.id)}
+                    onDrop={isLiveMode ? undefined : (event) => handleSectionDrop(event, section.id)}
+                    title={`Show ${section.name}`}
+                  >
+                    <span className={tone.icon}>{sectionIcon(section.type)}</span>
+                    <span>{section.name}</span>
+                    <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs text-cue-muted">
+                      {visibleItemCount}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {isLiveMode && lastLiveRemovedItem && (
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <span>Removed {lastLiveRemovedItem.title} from this run.</span>
+              <button className="font-semibold text-amber-900 underline-offset-2 hover:underline" type="button" onClick={undoLiveRemove}>
+                Undo
+              </button>
+            </div>
+          )}
+
+          <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1 2xl:mt-4 2xl:space-y-3">
+            {visibleSections.map((section) => {
+              const tone = sectionTone(section.type);
+              const visibleItems = section.items
+                .slice()
+                .sort((a, b) => a.sortOrder - b.sortOrder)
+                .filter((item) => !isLiveMode || !liveRemovedItemIds.has(item.id));
+              const playThroughActive = playThroughSectionId === section.id;
+
+              return (
+                <div
+                  key={section.id}
+                  className={[
+                    "overflow-hidden rounded-md border bg-white transition-colors",
+                    dragOverSectionId === section.id
+                      ? "border-cue-action bg-blue-50"
+                      : "border-cue-line",
+                  ].join(" ")}
+                  onDragLeave={isLiveMode ? undefined : () => setDragOverSectionId((current) => current === section.id ? null : current)}
+                  onDragOver={isLiveMode ? undefined : (event) => handleSectionDragOver(event, section.id)}
+                  onDrop={isLiveMode ? undefined : (event) => handleSectionDrop(event, section.id)}
+                >
+                  <div className={["flex items-center justify-between gap-2 border-b px-3 py-2 2xl:gap-3 2xl:px-4 2xl:py-3", tone.header].join(" ")}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className={["h-8 w-1 rounded-full", tone.rail].join(" ")} aria-hidden="true" />
+                      <div className={tone.icon}>{sectionIcon(section.type)}</div>
+                      {editingSectionId === section.id ? (
+                        <input
+                          className="min-w-0 rounded-md border border-cue-line px-2 py-1 text-sm font-semibold"
+                          value={editingSectionName}
+                          autoFocus
+                          onBlur={commitSectionName}
+                          onChange={(event) => setEditingSectionName(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") commitSectionName();
+                            if (event.key === "Escape") setEditingSectionId(null);
+                          }}
+                        />
+                      ) : (
+                        <div className={["min-w-0 truncate text-base font-semibold", tone.title].join(" ")}>{section.name}</div>
+                      )}
+                    </div>
+                    <div className="relative flex items-center gap-2">
+                      <span className="text-xs font-semibold text-cue-muted 2xl:text-sm">{visibleItems.length} {visibleItems.length === 1 ? "song" : "songs"}</span>
+                      <button
+                        className={[
+                          "inline-flex rounded-md border px-2.5 py-1.5 text-xs font-semibold transition",
+                          playThroughActive
+                            ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                            : "border-cue-action bg-white text-cue-action hover:bg-blue-50",
+                        ].join(" ")}
+                        type="button"
+                        disabled={visibleItems.length === 0}
+                        onClick={playThroughActive ? stopPlayThrough : () => void handlePlaySection(section)}
+                      >
+                        {playThroughActive ? "Stop auto" : "Play section"}
+                      </button>
+                      {!isLiveMode && (
+                        <>
+                          <button className={iconButtonClass()} type="button" title="Rename section" onClick={() => startEditingSection(section)}>
+                            <Edit3 className="size-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            className={iconButtonClass()}
+                            type="button"
+                            title="Section menu"
+                            onClick={() => setOpenSectionMenuId((current) => current === section.id ? null : section.id)}
+                          >
+                            <MoreVertical className="size-4" aria-hidden="true" />
+                          </button>
+                          {openSectionMenuId === section.id && (
+                            <div className="absolute right-0 top-10 z-10 w-44 rounded-md border border-cue-line bg-white p-1 shadow-lg">
+                              <button className={buttonClass("ghost") + " w-full justify-start"} type="button" onClick={() => startEditingSection(section)}>
+                                Rename section
+                              </button>
+                              <button
+                                className={dangerButtonClass() + " w-full justify-start border-transparent px-3 py-2 shadow-none"}
+                                type="button"
+                                disabled={orderedSections.length <= 1}
+                                onClick={() => removeSection(section.id)}
+                              >
+                                Remove section
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-cue-line px-3 py-1 2xl:px-4">
+                    {visibleItems.map((item, index) => {
                       const indexedTrack = findTrackById(libraryIndex, item.trackId);
                       const title = item.customTitle ?? indexedTrack?.displayTitle ?? item.trackId;
                       const duration = indexedTrack?.durationSeconds;
@@ -1375,7 +1629,7 @@ export function App() {
                         <div
                           key={item.id}
                           className={[
-                            "grid grid-cols-[20px_24px_minmax(0,1fr)_48px_36px] items-center gap-1.5 py-1.5 text-sm 2xl:grid-cols-[28px_34px_minmax(0,1fr)_64px_44px] 2xl:gap-2 2xl:py-2",
+                            "grid grid-cols-[20px_24px_minmax(0,1fr)_48px_76px] items-center gap-1.5 py-1.5 text-sm 2xl:grid-cols-[28px_34px_minmax(0,1fr)_64px_86px] 2xl:gap-2 2xl:py-2",
                             !isLiveMode ? "cursor-grab active:cursor-grabbing" : "",
                             isMissing ? "bg-amber-50 text-cue-warm" : "",
                             dragOverItemId === item.id ? "rounded-md bg-blue-50 ring-2 ring-blue-100" : "",
@@ -1392,7 +1646,7 @@ export function App() {
                           <GripVertical className={["size-4", isLiveMode ? "opacity-0" : "text-cue-muted"].join(" ")} aria-hidden="true" />
                           <div className="tabular-nums text-cue-muted">{index + 1}</div>
                           <div className="min-w-0">
-                            <div className={["truncate font-medium", isLoaded ? "text-cue-action" : ""].join(" ")}>{title}</div>
+                            <div className={["truncate font-medium", isLoaded ? tone.title : ""].join(" ")}>{title}</div>
                             {isMissing && <div className="text-xs font-semibold">Missing file</div>}
                           </div>
                           <div className="text-right tabular-nums text-cue-ink">{isMissing ? "--" : formatTime(duration ?? 0)}</div>
@@ -1416,6 +1670,16 @@ export function App() {
                                 <Folder className="size-4" aria-hidden="true" />
                               </button>
                             )}
+                            {isLiveMode && !isMissing && (
+                              <button
+                                className="inline-flex size-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-800 transition hover:bg-amber-100"
+                                type="button"
+                                title="Remove from current run"
+                                onClick={() => void removeFromCurrentRun(item, title)}
+                              >
+                                <X className="size-4" aria-hidden="true" />
+                              </button>
+                            )}
                             {!isLiveMode && !isMissing && (
                               <button
                                 className="inline-flex size-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
@@ -1430,14 +1694,15 @@ export function App() {
                         </div>
                       );
                     })}
-                  {section.items.length === 0 && (
-                    <div className="rounded-md border border-dashed border-cue-line px-3 py-2 text-sm text-cue-muted 2xl:py-3">
-                      No songs in this section.
-                    </div>
-                  )}
+                    {visibleItems.length === 0 && (
+                      <div className="rounded-md border border-dashed border-cue-line px-3 py-2 text-sm text-cue-muted 2xl:py-3">
+                        No songs in this section.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {!isLiveMode && (

@@ -8,6 +8,8 @@ Field feedback from Daniel, Nathan, and Claude after running ServiceCue through 
 
 Reported: fade out can produce a small speaker pop at the end.
 
+Status: Implemented in v0.1.1 work. Natural ended playback no longer restores gain directly; fade/stop/pause teardown ramps to near-silence and waits a short tail before pausing/resetting.
+
 Decision: fix before further UI redesign because it affects live audio trust.
 
 Implementation notes:
@@ -24,6 +26,8 @@ Files:
 ### P1 - Section Tabs Instead Of Long Scrolling
 
 Reported: volunteers prefer clicking a section such as Youth, Choir, Solo, or Guest instead of scanning a vertical stack.
+
+Status: Implemented. The schedule panel now uses section tabs and renders the active section body instead of a full vertical stack. Tabs also work as drop targets in Setup Mode.
 
 Goal:
 
@@ -44,6 +48,8 @@ Files:
 ### P1 - Stronger Section Contrast
 
 Reported: headers and sections blend together.
+
+Status: Implemented. Section tabs and active section headers now use stronger group-specific accents, filled header bars, and color rails.
 
 Goal:
 
@@ -66,6 +72,8 @@ Files:
 
 Reported: request for “play through all songs in the section.”
 
+Status: Implemented. A section-level Play Section control loads the first ready item and auto-advances through the selected section until it ends or the operator stops/fades.
+
 Goal:
 
 - Allow a selected section to auto-advance from one song to the next.
@@ -85,6 +93,8 @@ Files:
 ### P2 - Live-Safe Quick Remove
 
 Reported: operators want to remove a song from the set list without leaving Live Mode.
+
+Status: Implemented. Live Mode can remove a song from the current run with Undo without mutating the saved schedule.
 
 Constraint:
 
