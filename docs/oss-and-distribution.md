@@ -1,6 +1,6 @@
 # ServiceCue - OSS and Distribution Notes
 
-Captured from ChatGPT passes on 2026-06-14. Reference material. The product/audio scoping verdict lives in [Scoping Review](scoping-review.md); this note holds the open-source, licensing, and distribution research. My take on which parts to keep is in the review under "Open source, licensing, and distribution."
+Reference material captured on 2026-06-14. The product/audio scoping verdict lives in [Scoping Review](scoping-review.md); this note holds the open-source, licensing, and distribution research. The recommendations on which parts to keep are in the review under "Open source, licensing, and distribution."
 
 ## Existing tools (build greenfield, do not fork)
 
@@ -205,6 +205,6 @@ Simpler alternative: skip the monorepo and put everything at root. The apps/desk
 
 Do not store app data in the install directory. Use Electron's `app.getPath("userData")` for database and settings. Use user-selected folders for media (`C:\Church Media\Negativ Library`, `\Incoming`, `\Schedules`). This avoids Windows permission problems.
 
-## ChatGPT's recommendation
+## Distribution recommendation
 
 Build as its own open-source project. Do not fork QPlayer or LivePlay. Package with electron-builder, publish installer plus portable to GitHub Releases, keep updates manual, add code signing only after real adoption, use Apache-2.0. The mistake would be expanding it into a worship suite. Keep it boring.

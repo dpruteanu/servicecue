@@ -156,7 +156,7 @@ Do not build these in the first version:
 * Mobile app, web dashboard
 * Lyrics display, Bible display
 * OBS, ATEM, Companion integration
-* AI tagging, YouTube playback, PowerPoint handling
+* Automatic tagging, YouTube playback, PowerPoint handling
 * Multi-computer collaboration, streaming, audio recording
 * Complex audio mixing, multiple simultaneous tracks
 * Auto-update, CI release pipeline, code signing

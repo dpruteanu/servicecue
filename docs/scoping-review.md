@@ -50,7 +50,7 @@ One distribution gotcha worth planning for now: an unsigned Electron .exe trigge
 
 ## Open source, licensing, and distribution
 
-A second pass (ChatGPT, captured in [OSS and Distribution Notes](oss-and-distribution.md)) covered the ground my review didn't: open-source alternatives, licensing, and how to ship. Most of it is sound and worth following. The parts to keep:
+A second review, captured in [OSS and Distribution Notes](oss-and-distribution.md), covered the ground this review did not: open-source alternatives, licensing, and how to ship. Most of it is sound and worth following. The parts to keep:
 
 Build greenfield, do not fork. The closest tools (QPlayer, LivePlay, Praisenter) are theatre-cue or presentation systems that solve a more technical problem than yours. They prove the category exists. They are not your app. QPlayer is GPL-3.0 and LivePlay is AGPL-3.0, so copying their code drags those obligations into your project. Reference ideas, write your own.
 

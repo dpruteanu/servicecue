@@ -1,6 +1,6 @@
 # ServiceCue Pilot Feedback & Backlog
 
-Field feedback from Daniel, Nathan, and Claude after running ServiceCue through live services.
+Field feedback from service volunteers after running ServiceCue through live services.
 
 ## Priority Order
 
